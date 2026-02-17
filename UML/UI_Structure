@@ -1,0 +1,37 @@
+ui/
+├── app_shell/
+│   ├── main_window.qml
+│   ├── sidebar.qml
+│   ├── topbar.qml
+│   └── statusbar.qml
+│
+├── dashboard/
+│   └── dashboard_page.qml
+│
+├── data/
+│   └── data_explorer_page.qml
+│
+├── analysis/
+│   └── analysis_page.qml
+│
+├── curation/
+│   └── labeling_page.qml
+│
+├── models/
+│   ├── model_registry_page.qml
+│   ├── training_page.ui
+│   ├── evaluation_page.qml
+│   └── conversion_page.qml
+│
+├── deployment/
+│   └── deployment_page.qml
+│
+├── devices/
+│   └── devices_page.qml
+│
+├── auth/
+│   └── login_dialog.qml
+│
+└── settings/
+    └── settings_dialog.qml
+

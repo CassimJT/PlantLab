@@ -10,6 +10,13 @@
 *.dll
 *.dylib
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
 # Qt-es
 object_script.*.Release
 object_script.*.Debug

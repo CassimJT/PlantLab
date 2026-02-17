@@ -1,0 +1,270 @@
+[
+    {
+        "classes": [
+            {
+                "className": "FileSystemController",
+                "qualifiedClassName": "FileSystemController",
+                "object": true,
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ],
+                "classInfos": [
+                    {
+                        "name": "QML.Element",
+                        "value": "auto"
+                    }
+                ],
+                "properties": [
+                    {
+                        "name": "model",
+                        "type": "QObject",
+                        "index": 0,
+                        "read": "model",
+                        "notify": "modelChanged"
+                    },
+                    {
+                        "name": "rootPath",
+                        "type": "QString",
+                        "index": 1,
+                        "read": "rootPath",
+                        "notify": "rootPathChanged"
+                    },
+                    {
+                        "name": "rootIndex",
+                        "type": "QModelIndex",
+                        "index": 2,
+                        "read": "rootIndex",
+                        "notify": "rootPathChanged"
+                    },
+                    {
+                        "name": "homePath",
+                        "type": "QString",
+                        "index": 3,
+                        "read": "homePath"
+                    },
+                    {
+                        "name": "currentImage",
+                        "type": "QString",
+                        "index": 4,
+                        "read": "currentImage",
+                        "notify": "imageSelected"
+                    },
+                    {
+                        "name": "imageCount",
+                        "type": "int",
+                        "index": 5,
+                        "read": "imageCount",
+                        "notify": "imageListChanged"
+                    },
+                    {
+                        "name": "currentIndex",
+                        "type": "int",
+                        "index": 6,
+                        "read": "currentIndex",
+                        "notify": "imageSelected"
+                    },
+                    {
+                        "name": "currentImageSize",
+                        "type": "QString",
+                        "index": 7,
+                        "read": "currentImageSize",
+                        "notify": "currentImageSizeChanged"
+                    }
+                ],
+                "signals": [
+                    {
+                        "access": "public",
+                        "name": "rootPathChanged",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QString"
+                            }
+                        ],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "directoryLoaded",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QString"
+                            }
+                        ],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "modelReset",
+                        "arguments": [],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "imageSelected",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QString"
+                            }
+                        ],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "imageListChanged",
+                        "arguments": [],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "currentImageSizeChanged",
+                        "arguments": [],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "modelChanged",
+                        "arguments": [],
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "name": "setRootFolder",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QString"
+                            }
+                        ],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "clearImageList",
+                        "arguments": [],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "nextImage",
+                        "arguments": [],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "previousImage",
+                        "arguments": [],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "setCurrentImage",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QString"
+                            }
+                        ],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "indexPath",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QString"
+                            }
+                        ],
+                        "returnType": "QModelIndex"
+                    },
+                    {
+                        "access": "public",
+                        "name": "filePath",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QModelIndex"
+                            }
+                        ],
+                        "returnType": "QString"
+                    },
+                    {
+                        "access": "public",
+                        "name": "fileName",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QModelIndex"
+                            }
+                        ],
+                        "returnType": "QString"
+                    },
+                    {
+                        "access": "public",
+                        "name": "isDir",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QModelIndex"
+                            }
+                        ],
+                        "returnType": "bool"
+                    },
+                    {
+                        "access": "public",
+                        "name": "addImageFilter",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QString"
+                            }
+                        ],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "resetToImageFilters",
+                        "arguments": [],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "goUp",
+                        "arguments": [],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "goHome",
+                        "arguments": [],
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "refresh",
+                        "arguments": [],
+                        "returnType": "void"
+                    }
+                ]
+            }
+        ],
+        "outputRevision": 68,
+        "QML_IMPORT_NAME": "com.plantlab.controllers",
+        "QML_IMPORT_MAJOR_VERSION": 1,
+        "QML_IMPORT_MINOR_VERSION": 0,
+        "QT_MODULES": [
+            "QtCore",
+            "QtQml",
+            "QtWidgets"
+        ],
+        "inputFile": "/home/csociety/CISociety/Qt/Plantlab/src/core/FileSystemController.py"
+    }
+]

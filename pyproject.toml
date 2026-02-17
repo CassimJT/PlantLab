@@ -1,0 +1,5 @@
+[project]
+name = "PySide QtQuick Project"
+
+[tool.pyside6-project]
+files = ["main.py", "main.qml", "resource.qrc", "src/core/FileSystemController.py", "ui/analysis/AnalysisPage.qml", "ui/app_shell/Mainwindow.qml", "ui/app_shell/Sidebar.qml", "ui/app_shell/Statusbar.qml", "ui/app_shell/Topbar.qml", "ui/app_shell/delegate/SideBarDelegate.qml", "ui/app_shell/model/SideBarModel.qml", "ui/app_shell/windows/Infarance.qml", "ui/app_shell/windows/LiveMonitor.qml", "ui/app_shell/windows/Settings.qml", "ui/auth/login_dialog.qml", "ui/curation/labeling_page.qml", "ui/dashboard/DashboardPage.qml", "ui/dashboard/component/ChartCard.qml", "ui/dashboard/component/MetricCard.qml", "ui/data/DataExplorerPage.qml", "ui/data/componets/FileView.qml", "ui/data/componets/PropertySideBar.qml", "ui/devices/DevicesPage.qml", "ui/models/Download.qml", "ui/models/Library.qml", "ui/models/ModelsPage.qml", "ui/models/Train.qml", "ui/models/Transform.qml", "ui/models/components/DetailRow.qml", "ui/models/delagete/ActionDelagate.qml", "ui/models/delagete/AvailableModelDelegate.qml", "ui/models/model/ActionModel.qml", "ui/models/model/AvailableModel.qml", "ui/settings/Settings.qml"]

@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qtquickcontrols2.conf</file>
+        <file>assets/sidebar_icon/model.svg</file>
+        <file>assets/sidebar_icon/label.svg</file>
+        <file>assets/sidebar_icon/devices.svg</file>
+        <file>assets/sidebar_icon/deployment.svg</file>
+        <file>assets/sidebar_icon/data.svg</file>
+        <file>assets/sidebar_icon/dashboard.svg</file>
+        <file>assets/sidebar_icon/analysis.svg</file>
+        <file>assets/sidebar_icon/settings.svg</file>
+        <file>assets/app_icon/PlantDocutor.png</file>
+        <file>assets/topBar/menu.svg</file>
+        <file>assets/topBar/pest.svg</file>
+        <file>assets/topBar/infarence.svg</file>
+        <file>assets/data/add.svg</file>
+        <file>assets/model/updates.svg</file>
+        <file>assets/model/transform.svg</file>
+        <file>assets/model/shelf.svg</file>
+    </qresource>
+</RCC>
