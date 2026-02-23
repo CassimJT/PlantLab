@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 import  rc_resource
-from src.core.FileSystemController import FileSystemController
+from src.core.controllers.FileSystemController import FileSystemController
 
 
 if __name__ == "__main__":
