@@ -196,7 +196,7 @@ Page {
                         ComboBox {
                             id: formatCombo
                             Layout.fillWidth: true
-                            model: ["CSV with paths", "CSV with metadata", "JSON", "HDF5"]
+                            model: ["CSV with paths", "CSV with metadata", "JSON"]
                         }
                     }
 
