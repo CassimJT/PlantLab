@@ -32,7 +32,7 @@ Page {
                     id: csvPath
                     Layout.fillWidth: true
                     Layout.preferredWidth: parent.width * 0.5
-                    placeholderText: "Select normalized CSV file..."
+                    placeholderText: "Select normalized CSV file / a path to dataset..."
                     readOnly: true
                 }
 
@@ -58,43 +58,34 @@ Page {
                 ComboBox {
                     id: modelType
                     Layout.preferredWidth: parent.width * 0.7
-                    model: ["Logistic Regression", "Random Forest", "SVM", "Neural Network"]
+                    model: ["MobileNetV3-Small (fastest)",
+                        "MobileNetV3-Large (more accurate)",
+                        "SSDLite-MobileNetV3 (for detection)"]
                     currentIndex: 0
                 }
 
                 Label { text: "Epochs:" }
                 SpinBox {
                     id: epochs
-                    editable: true
                     from: 1
-                    to: 500
-                    value: 50
+                    to: 100
+                    value: 15
                 }
 
                 Label { text: "Batch Size:" }
                 SpinBox {
                     id: batchSize
-                    editable: true
                     from: 1
-                    to: 1024
-                    value: 32
-                }
-
-                Label { text: "Learning Rate:" }
-                TextField {
-                    id: lr
-                    text: "0.001"
-                    validator: DoubleValidator { bottom: 0.000001 }
+                    to: 128
+                    value: 8
                 }
 
                 Label { text: "Train/Test Split:" }
                 Slider {
                     id: split
-                    Layout.preferredWidth: parent.width * 0.7
                     from: 0.5
                     to: 0.95
                     value: 0.8
-                    stepSize: 0.05
                 }
 
                 Label {
