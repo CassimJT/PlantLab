@@ -8,6 +8,7 @@ from PySide6.QtCore import (
 )
 import FileSystemController
 
+
 class DatasetProcessor(QtCore.QObject):
     # =======================
     # SIGNALS
@@ -33,11 +34,11 @@ class DatasetProcessor(QtCore.QObject):
     progressValueChanged = Signal()
     totalImagesToProcessChanged = Signal()
 
-    def __init__(self,fileSystemController=None, parent=None):
+    def __init__(self, fileSystemController=None, parent=None):
         super.__init__(parent)
         self._is_processing = False
         self._progress_value = 0
-        self._total_image= 0
+        self._total_image = 0
 
     # --Property--
     @Property(bool, notify=isProcessingChanged)
@@ -48,7 +49,7 @@ class DatasetProcessor(QtCore.QObject):
     def progressValue(self):
         return self._progress_value
 
-    @Property(int,notify=totalImagesToProcessChanged)
+    @Property(int, notify=totalImagesToProcessChanged)
     def totalImagesToProcess(self):
         return self._total_image
 
@@ -81,12 +82,11 @@ class DatasetProcessor(QtCore.QObject):
     @Slot(str, str)
     def exportDataset(self, formate: str, destination: str):
         pass
-    @Slot(str, str)
-    def exportDataset(format: String, destination: String):
-        pass
+
     @Slot()
     def cancelProcessing():
         pass
+
     @Slot(result=str)
     def getDefaultExportPath():
         pass

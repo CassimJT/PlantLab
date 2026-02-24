@@ -79,6 +79,12 @@ Page {
                     to: 128
                     value: 8
                 }
+                Label { text: "Learning Rate:" }
+                TextField {
+                    id: lr
+                    text: "0.0001"
+                    validator: DoubleValidator { bottom: 0.000001 }
+                }
 
                 Label { text: "Train/Test Split:" }
                 Slider {
