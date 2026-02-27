@@ -8,7 +8,7 @@ Window {
     visible: true
     title: "Live Pest Monitor"
 
-    modality: Qt.ApplicationModal
+    //modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowSystemMenuHint
     BusyIndicator {
         anchors.centerIn: parent

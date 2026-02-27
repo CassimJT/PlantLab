@@ -7,7 +7,7 @@ Window {
     visible: true
     title: "Infarence"
 
-    modality: Qt.ApplicationModal
+    //modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowSystemMenuHint
 
     BusyIndicator {

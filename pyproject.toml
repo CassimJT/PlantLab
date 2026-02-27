@@ -31,6 +31,8 @@ files = [
 "src/core/research/__init__.py",
 "src/core/users/User.py",
 "ui/analysis/AnalysisPage.qml",
+"ui/analysis/AnalysisScreen.qml",
+"ui/analysis/DataExplorerPage.qml",
 "ui/app_shell/Mainwindow.qml",
 "ui/app_shell/Sidebar.qml",
 "ui/app_shell/Statusbar.qml",
