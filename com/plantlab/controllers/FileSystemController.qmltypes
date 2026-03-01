@@ -7,7 +7,7 @@ import QtQuick.tooling 1.2
 
 Module {
     Component {
-        file: "/home/csociety/CISociety/Qt/Plantlab/src/core/FileSystemController.py"
+        file: "/home/csociety/CISociety/Qt/Plantlab/src/core/controllers/FileSystemController.py"
         lineNumber: 0
         name: "FileSystemController"
         accessSemantics: "reference"

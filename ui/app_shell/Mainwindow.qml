@@ -46,7 +46,7 @@ Page {
         DashboardPage {}
         DataExplorerPage {}
         ModelsPage {}
-        AnalysisPage {}
+        AnalysisScreen{}
         DevicesPage {}
         Settings{}
 

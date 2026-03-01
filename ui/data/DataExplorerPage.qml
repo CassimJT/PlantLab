@@ -254,8 +254,20 @@ Page {
             TabBar {
                 id: tabbar
                 width: parent.width
-                TabButton { text: qsTr("View") }
-                TabButton { text: qsTr("Property") }
+                TabButton {
+                    text: qsTr("View")
+                    icon.source: "qrc:/assets/sidebar_icon/tree-structure.svg"
+                    icon.width: 22
+                    icon.height: 22
+                    icon.color: "#475569"
+                }
+                TabButton {
+                    icon.source: "qrc:/assets/sidebar_icon/settings.svg"
+                    icon.width: 22
+                    icon.height: 22
+                    icon.color: "#475569"
+                    text: qsTr("Property")
+                }
             }
 
             StackLayout {

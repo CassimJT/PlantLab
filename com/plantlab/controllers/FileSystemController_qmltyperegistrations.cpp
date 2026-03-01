@@ -7,8 +7,8 @@
 #include <QtQml/qqml.h>
 #include <QtQml/qqmlmoduleregistration.h>
 
-#if __has_include(</home/csociety/CISociety/Qt/Plantlab/src/core/FileSystemController.py>)
-#  include </home/csociety/CISociety/Qt/Plantlab/src/core/FileSystemController.py>
+#if __has_include(</home/csociety/CISociety/Qt/Plantlab/src/core/controllers/FileSystemController.py>)
+#  include </home/csociety/CISociety/Qt/Plantlab/src/core/controllers/FileSystemController.py>
 #endif
 
 
