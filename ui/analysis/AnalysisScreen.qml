@@ -1,6 +1,8 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts
+import "./delegate"
+import "./model"
 
 
 Page {
@@ -49,7 +51,7 @@ Page {
 
         // ====== LEFT SIDEBAR ======
         Rectangle {
-            implicitWidth: 140
+            implicitWidth: 70
             SplitView.minimumWidth: 60
             SplitView.maximumWidth: 180
             color: "#f8fafc"
@@ -60,7 +62,8 @@ Page {
                 anchors.fill: parent
                 anchors.margins: 5
                 clip:true
-                //...
+                model: AnalysisNaveModel{}
+                delegate: AnalysisNavDelegate{}
 
             }
         }
@@ -73,7 +76,9 @@ Page {
             StackLayout {
                 anchors.fill: parent
                 currentIndex: listView.currentIndex
-
+                DataExplorerPage{}
+                AnalysisPage{}
+                Reports{}
             }
 
         }

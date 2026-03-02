@@ -18,5 +18,11 @@
         <file>assets/model/transform.svg</file>
         <file>assets/model/shelf.svg</file>
         <file>assets/sidebar_icon/tree-structure.svg</file>
+        <file>assets/analysis/report.svg</file>
+        <file>assets/analysis/explore.svg</file>
+        <file>assets/analysis/analysis.svg</file>
+        <file>assets/analysis/get.svg</file>
+        <file>assets/analysis/export-pdf.svg</file>
+        <file>assets/analysis/clear.svg</file>
     </qresource>
 </RCC>

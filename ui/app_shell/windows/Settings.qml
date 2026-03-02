@@ -4,7 +4,7 @@ import QtQuick.Controls
 
 
 Window {
-    width: 800
+    width: 600
     height: 600
     visible: true
     title: "Settings"

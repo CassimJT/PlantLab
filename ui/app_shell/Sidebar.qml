@@ -6,7 +6,7 @@ import QtQuick.Layouts
 
 Page {
     id: sidebar
-    width: parent.width * 0.15
+    width: parent.width * 0.14
     clip: true
     background: Rectangle {
         color: "#ffffff"
