@@ -31,18 +31,30 @@ Page {
 
                 Button {
                     text: "Export PDF"
+                    icon.source: "qrc:/assets/analysis/icons8-pdf-50.svg"
+                    icon.width: 24
+                    icon.height: 24
+                    icon.color: root.selectedReportId ? "#475569" : "gray"
                     enabled: root.selectedReportId !== ""
                     onClicked: root.exportPdfRequested(root.selectedReportId)
                 }
 
                 Button {
                     text: "Export CSV"
+                    icon.source: "qrc:/assets/analysis/icons8-csv-50.svg"
+                    icon.width: 24
+                    icon.height: 24
+                    icon.color: root.selectedReportId ? "#475569" : "gray"
                     enabled: root.selectedReportId !== ""
                     onClicked: root.exportCsvRequested(root.selectedReportId)
                 }
 
                 Button {
                     text: "Delete"
+                    icon.source: "qrc:/assets/analysis/icons8-delete-48.svg"
+                    icon.width: 24
+                    icon.height: 24
+                    icon.color: root.selectedReportId ? "#475569" : "gray"
                     enabled: root.selectedReportId !== ""
                     onClicked: root.deleteReportRequested(root.selectedReportId)
                 }

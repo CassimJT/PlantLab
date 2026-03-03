@@ -33,6 +33,7 @@ Page {
                 ComboBox {
                     id: analysisSelector
                     Layout.preferredWidth: 260
+                    Layout.preferredHeight: run.height
                     model: [
                         "Disease Frequency",
                         "Pest Frequency",
@@ -52,6 +53,7 @@ Page {
                 }
 
                 Button {
+                    id: run
                     text: "Run"
                     enabled: !root.isRunning
                     onClicked: {

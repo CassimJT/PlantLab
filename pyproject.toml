@@ -54,6 +54,8 @@ files = [
 "ui/data/componets/FileView.qml",
 "ui/data/componets/PropertySideBar.qml",
 "ui/devices/DevicesPage.qml",
+"ui/devices/delegate/DeviceDelegate.qml",
+"ui/devices/model/DeviceModel.qml",
 "ui/models/Download.qml",
 "ui/models/Library.qml",
 "ui/models/ModelsPage.qml",
