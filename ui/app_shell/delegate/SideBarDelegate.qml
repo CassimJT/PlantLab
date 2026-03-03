@@ -25,7 +25,7 @@ ItemDelegate {
     text: label
 
     background: Rectangle {
-        color: root.highlighted ? "#e0f2fe"
+        color: root.highlighted ? "#4fc1e9"
              : root.hovered   ? "#f1f5f9"
                               : "transparent"
         radius: 8

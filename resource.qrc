@@ -24,11 +24,10 @@
         <file>assets/analysis/get.svg</file>
         <file>assets/analysis/export-pdf.svg</file>
         <file>assets/analysis/clear.svg</file>
-        <file>assets/devices/electronics.png</file>
-        <file>assets/devices/PND_Device.png</file>
         <file>assets/devices/PND.png</file>
         <file>assets/analysis/icons8-pdf-50.svg</file>
         <file>assets/analysis/icons8-delete-48.svg</file>
         <file>assets/analysis/icons8-csv-50.svg</file>
+        <file>assets/devices/close.png</file>
     </qresource>
 </RCC>
