@@ -13,7 +13,7 @@ import "../models"
 Page {
     id: main_wondow
     background: Rectangle {
-      color: "#f5f7fb"
+        color: "#f5f7fb"
 
     }
     //sideBar
@@ -54,6 +54,7 @@ Page {
     //Statusbar
     footer: Statusbar {
         id: statusbar
+        datasetProcessor: DatasetProcessor
     }
     
 

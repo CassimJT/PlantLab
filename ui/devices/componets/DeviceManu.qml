@@ -37,8 +37,6 @@ Popup {
 
         }
     }
-
-
     contentItem: Column {
         spacing: 8
         width: parent.width

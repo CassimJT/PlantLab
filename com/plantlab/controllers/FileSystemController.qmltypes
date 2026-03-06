@@ -71,6 +71,13 @@ Module {
             index: 7
             isReadonly: true
         }
+        Property {
+            name: "imageFilters"
+            type: "QVariantList"
+            read: "imageFilters"
+            index: 8
+            isReadonly: true
+        }
         Signal {
             name: "rootPathChanged"
             Parameter { name: "a1"; type: "QString" }
@@ -126,5 +133,15 @@ Module {
         Method { name: "goUp" }
         Method { name: "goHome" }
         Method { name: "refresh" }
+        Method {
+            name: "countImagesInDirectory"
+            type: "int"
+            Parameter { name: "a1"; type: "QString" }
+        }
+        Method {
+            name: "getImagePaths"
+            type: "QVariantList"
+            Parameter { name: "a1"; type: "QString" }
+        }
     }
 }

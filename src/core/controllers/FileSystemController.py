@@ -375,3 +375,39 @@ class FileSystemController(QObject):
     def _onDirectoryLoaded(self, path: str):
         print(f"Directory loaded: {path}")
         self.directoryLoaded.emit(path)
+
+        # Add to FileSystemController class:
+
+    @Property('QVariantList', constant=True)
+    def imageFilters(self):
+        """Expose image filters to QML and other classes"""
+        return self._image_filters
+
+    @Slot(str, result=int)
+    def countImagesInDirectory(self, path: str):
+        """Count images in a directory (reusable method)"""
+        count = 0
+        iterator = QDirIterator(
+            path,
+            self._image_filters,
+            QDir.Files,
+            QDirIterator.Subdirectories
+        )
+        while iterator.hasNext():
+            iterator.next()
+            count += 1
+        return count
+
+    @Slot(str, result='QVariantList')
+    def getImagePaths(self, path: str):
+        """Get all image paths in a directory"""
+        paths = []
+        iterator = QDirIterator(
+            path,
+            self._image_filters,
+            QDir.Files,
+            QDirIterator.Subdirectories
+        )
+        while iterator.hasNext():
+            paths.append(iterator.next())
+            return paths

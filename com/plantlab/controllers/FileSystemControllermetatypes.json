@@ -72,6 +72,12 @@
                         "index": 7,
                         "read": "currentImageSize",
                         "notify": "currentImageSizeChanged"
+                    },
+                    {
+                        "name": "imageFilters",
+                        "type": "QVariantList",
+                        "index": 8,
+                        "read": "imageFilters"
                     }
                 ],
                 "signals": [
@@ -252,6 +258,28 @@
                         "name": "refresh",
                         "arguments": [],
                         "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "countImagesInDirectory",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QString"
+                            }
+                        ],
+                        "returnType": "int"
+                    },
+                    {
+                        "access": "public",
+                        "name": "getImagePaths",
+                        "arguments": [
+                            {
+                                "name": "a1",
+                                "type": "QString"
+                            }
+                        ],
+                        "returnType": "QVariantList"
                     }
                 ]
             }
