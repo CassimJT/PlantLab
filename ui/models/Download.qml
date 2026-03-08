@@ -7,11 +7,11 @@ Page {
     id: root
     // Properties for model download
     property string modelId: ""
-    property string downloadPath: StandardPaths.writableLocation(StandardPaths.DownloadLocation)
-    property var selectedFrameworks: []
-    property bool downloading: false
-    property double downloadProgress: 0
-    property string statusMessage: "Ready"
+    property string downloadPath: ModelDownloader ? ModelDownloader.downloadLocation : StandardPaths.writableLocation(StandardPaths.DownloadLocation)
+    property string selectedFramework: "PyTorch"  // Changed to string, not array
+    property bool downloading: ModelDownloader ? ModelDownloader.isDownloading : false
+    property double downloadProgress: ModelDownloader ? ModelDownloader.downloadProgress : 0
+    property string statusMessage: ModelDownloader ? ModelDownloader.statusMessage : "Ready"
 
     ColumnLayout {
         spacing: 15
@@ -29,7 +29,7 @@ Page {
 
             ColumnLayout {
                 width: parent.width
-                spacing: 10
+                spacing: 5
 
                 Label {
                     text: "Hugging Face Model ID:"
@@ -41,67 +41,59 @@ Page {
                     Layout.fillWidth: true
                     placeholderText: "e.g., google/flan-t5-base, openai/whisper-large-v3"
                     onTextChanged: {
-                       //..
+                        root.modelId = text
                     }
                 }
-
             }
         }
 
-        // Framework Selection
+        // Framework Selection - Single selection with RadioButton in GridLayout
         GroupBox {
-            title: "Select Frameworks"
+            title: "Select Framework "
             Layout.fillWidth: true
 
             GridLayout {
-                width: parent.width
+                //width: parent.width
                 columns: 3
-                columnSpacing: 20
-                rowSpacing: 10
+                columnSpacing: 24
+                rowSpacing: 8
+                Layout.fillWidth: true
 
-                CheckBox {
-                    id: pytorchCheck
-                    text: "PyTorch"
+                RadioButton {
+                    id: pytorchRadio
+                    text: "PyTorch (.pt)"
                     checked: true
-                    onCheckedChanged: updateSelectedFrameworks()
+                    onCheckedChanged: if (checked) updateSelectedFramework("PyTorch")
                 }
 
-                CheckBox {
-                    id: libtorchCheck
-                    text: "LibTorch"
-                    onCheckedChanged: updateSelectedFrameworks()
+                RadioButton {
+                    id: libtorchRadio
+                    text: "LibTorch (C++)"
+                    onCheckedChanged: if (checked) updateSelectedFramework("LibTorch")
                 }
 
-                CheckBox {
-                    id: opencvCheck
-                    text: "OpenCV"
-                    onCheckedChanged: updateSelectedFrameworks()
+                RadioButton {
+                    id: opencvRadio
+                    text: "OpenCV (DNN)"
+                    onCheckedChanged: if (checked) updateSelectedFramework("OpenCV")
                 }
 
-                CheckBox {
-                    id: tensorflowCheck
+                RadioButton {
+                    id: tensorflowRadio
                     text: "TensorFlow"
-                    onCheckedChanged: updateSelectedFrameworks()
+                    onCheckedChanged: if (checked) updateSelectedFramework("TensorFlow")
                 }
 
-                CheckBox {
-                    id: onnxCheck
+                RadioButton {
+                    id: onnxRadio
                     text: "ONNX"
-                    onCheckedChanged: updateSelectedFrameworks()
+                    onCheckedChanged: if (checked) updateSelectedFramework("ONNX")
                 }
 
-                CheckBox {
-                    id: allFrameworksCheck
-                    text: "All Frameworks"
-                    onCheckedChanged: {
-                        if (checked) {
-                            pytorchCheck.checked = true
-                            libtorchCheck.checked = true
-                            opencvCheck.checked = true
-                            tensorflowCheck.checked = true
-                            onnxCheck.checked = true
-                        }
-                    }
+                RadioButton {
+                    id: executorchRadio
+                    text: "Executorch (.pte)"
+                    onCheckedChanged: if (checked) updateSelectedFramework("Executorch")
                 }
             }
         }
@@ -131,6 +123,7 @@ Page {
                             Layout.fillWidth: true
                             text: downloadPath
                             readOnly: true
+                            placeholderText: "Document/plantlab/models"
                         }
 
                         Button {
@@ -160,6 +153,7 @@ Page {
                                 commitHashField.visible = true
                             } else {
                                 commitHashField.visible = false
+                                commitHashField.text = ""
                             }
                         }
                     }
@@ -181,15 +175,35 @@ Page {
 
             ColumnLayout {
                 width: parent.width
-                spacing: 10
+                spacing: 5
 
-                ProgressBar {
-                    id: progressBar
-                    Layout.fillWidth: true
-                    value: downloadProgress
-                    visible: downloading
+                RowLayout {
+                    Layout.preferredWidth: parent.width
+                    spacing: 2
+                    ProgressBar {
+                        id: progressBar
+                        Layout.fillWidth: true
+                        from: 0
+                        to: 100
+                        value: downloadProgress
+                        visible: downloading
+                        BusyIndicator {
+                            width: 20
+                            height: width
+                            anchors.centerIn: parent
+                            visible: downloading
+                            running: downloading
+                            z: 10
+                        }
+                    }
+                    Label {
+                        id: percentage
+                        text: progressBar.value + "%"
+                        color: "green"
+                        visible: downloading
+                        font.bold: true
+                    }
                 }
-
                 Label {
                     id: statusLabel
                     text: statusMessage
@@ -213,8 +227,8 @@ Page {
                 }
 
                 Label {
-                    text: "Selected Frameworks: " + selectedFrameworks.join(", ")
-                    visible: selectedFrameworks.length > 0
+                    text: "Selected Framework: " + selectedFramework
+                    visible: selectedFramework !== ""
                     font.italic: true
                 }
             }
@@ -226,39 +240,64 @@ Page {
             spacing: 20
 
             Button {
-                text: downloading ? "Downloading..." : "Download Model"
-                enabled: !downloading && modelIdField.text.trim() !== ""
-
-                contentItem: Row {
-                    spacing: 10
-                    Text { text: parent.parent.text; color: parent.parent.enabled ? "white" : "gray" }
-                    BusyIndicator {
-                        width: 20
-                        height: 20
-                        running: downloading
-                        visible: downloading
-                    }
-                }
+                text: downloading ? "Cancel Download" : "Download Model"
+                enabled: !downloading ? modelIdField.text.trim() !== "" : true
 
                 onClicked: {
-                    //
-                }
+                    if (downloading) {
+                        // Cancel download
+                        if (ModelDownloader) {
+                            ModelDownloader.cancelDownload()
+                        }
+                    } else {
+                        // Start download
+                        if (!ModelDownloader) {
+                            console.error("ModelDownloader not available")
+                            return
+                        }
 
+                        // Get the branch/version
+                        var branch = "Latest"
+                        var commitHash = ""
+
+                        if (versionCombo.currentIndex === 1) {
+                            branch = "Main"
+                        } else if (versionCombo.currentIndex === 2) {
+                            branch = "Specific Commit"
+                            commitHash = commitHashField.text.trim()
+                        }
+
+                        // Update download location if changed
+                        if (downloadPath !== ModelDownloader.downloadLocation) {
+                            ModelDownloader.setDownloadLocation(downloadPath)
+                        }
+
+                        // Call downloadModel with the parameters (single framework as list with one item)
+                        ModelDownloader.downloadModel(
+                                    modelIdField.text.trim(),
+                                    [selectedFramework],  // Convert to list with single item
+                                    branch,
+                                    commitHash
+                                    )
+                    }
+                }
             }
 
             Button {
                 text: "Clear"
                 onClicked: {
                     modelIdField.text = ""
-                    selectedFrameworks = []
-                    pytorchCheck.checked = false
-                    libtorchCheck.checked = false
-                    opencvCheck.checked = false
-                    tensorflowCheck.checked = false
-                    onnxCheck.checked = false
-                    allFrameworksCheck.checked = false
+                    pytorchRadio.checked = true  // Reset to default
+                    updateSelectedFramework("PyTorch")
+                    versionCombo.currentIndex = 0
+                    commitHashField.visible = false
+                    commitHashField.text = ""
                     statusMessage = "Ready"
                     downloadProgress = 0
+
+                    if (downloading && ModelDownloader) {
+                        ModelDownloader.cancelDownload()
+                    }
                 }
             }
 
@@ -270,13 +309,15 @@ Page {
         }
     }
 
-    function updateSelectedFrameworks() {
-        selectedFrameworks = []
-        if (pytorchCheck.checked) selectedFrameworks.push("PyTorch")
-        if (libtorchCheck.checked) selectedFrameworks.push("LibTorch")
-        if (opencvCheck.checked) selectedFrameworks.push("OpenCV")
-        if (tensorflowCheck.checked) selectedFrameworks.push("TensorFlow")
-        if (onnxCheck.checked) selectedFrameworks.push("ONNX")
+    // Update selected framework (single selection)
+    function updateSelectedFramework(framework) {
+        if (selectedFramework !== framework) {
+            selectedFramework = framework
+            console.log("Selected framework changed to:", selectedFramework)
+
+            // Optional: You could emit a signal to backend if needed
+            // frameworksChanged(selectedFramework)
+        }
     }
 
     // Folder Dialog
@@ -285,8 +326,17 @@ Page {
         title: "Select Download Folder"
         currentFolder: downloadPath
         onAccepted: {
-            downloadPath = folderDialog.folder
+            downloadPath = folderDialog.currentFolder.toString()
+            // Remove file:// prefix if present
+            if (downloadPath.startsWith("file://")) {
+                downloadPath = downloadPath.substring(7)
+            }
             pathField.text = downloadPath
+
+            // Update ModelDownloader location
+            if (ModelDownloader) {
+                ModelDownloader.setDownloadLocation(downloadPath)
+            }
         }
     }
 
@@ -295,12 +345,55 @@ Page {
         id: downloadCompleteDialog
         title: "Download Complete"
         text: "Model '" + modelId + "' has been successfully downloaded!"
-        informativeText: "Frameworks: " + selectedFrameworks.join(", ") +
-                        "\n\nLocation: " + downloadPath
+        informativeText: "Framework: " + selectedFramework +
+                         "\n\nLocation: " + downloadPath
+    }
+
+    // Connections to ModelDownloader
+    Connections {
+        target: ModelDownloader
+        enabled: typeof ModelDownloader !== "undefined"
+
+        function onDownloadProgressChanged(progress) {
+            root.downloadProgress = progress
+        }
+
+        function onStatusMessageChanged(message) {
+            root.statusMessage = message
+        }
+
+        function onIsDownloadingChanged() {
+            root.downloading = ModelDownloader.isDownloading
+        }
+
+        function onDownloadFinished(path) {
+            //downloadCompleteDialog.open()
+            downloadCompleteDialog.text = "Model '" + modelIdField.text + "' has been successfully downloaded!"
+            downloadCompleteDialog.informativeText = "Framework: " + selectedFramework +
+                    "\n\nLocation: " + path
+        }
+
+        function onDownloadErrorOccurred(error) {
+            root.statusMessage = "Error: " + error
+        }
+
+        function onDownloadLocationChanged(location) {
+            root.downloadPath = location
+            pathField.text = location
+        }
     }
 
     // Initialize
     Component.onCompleted: {
-        updateSelectedFrameworks()
+        // Set default framework
+        updateSelectedFramework("PyTorch")
+
+        if (ModelDownloader) {
+            pathField.text = ModelDownloader.downloadLocation
+            downloadPath = ModelDownloader.downloadLocation
+            downloading = ModelDownloader.isDownloading
+            downloadProgress = ModelDownloader.downloadProgress
+            statusMessage = ModelDownloader.statusMessage
+        }
     }
 }

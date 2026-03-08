@@ -1,3 +1,4 @@
+//modlPage
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts
@@ -181,14 +182,8 @@ Page {
                     font.weight: Font.Medium
                 }
 
-                TextArea {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    readOnly: true
-                    placeholderText: ""
-                    BusyIndicator {
-                        anchors.centerIn: parent
-                    }
+                Logs{
+                    id: logs
                 }
             }
         }
