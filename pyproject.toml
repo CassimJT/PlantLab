@@ -26,6 +26,7 @@ files = [
 "src/core/model_engineering/ModelConverterWorker.py",
 "src/core/model_engineering/ModelDownloader.py",
 "src/core/model_engineering/ModelTrainer.py",
+"src/core/model_engineering/ModelTrainerWorker.py",
 "src/core/model_engineering/__init__.py",
 "src/core/research/ApiClient.py",
 "src/core/research/DataService.py",
