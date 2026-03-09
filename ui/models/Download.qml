@@ -208,7 +208,9 @@ Page {
                     id: statusLabel
                     text: statusMessage
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
+                    wrapMode: Text.WordWrap
+                    elide: Text.ElideRight
+                    maximumLineCount: 2
 
                     // Color based on status
                     color: {

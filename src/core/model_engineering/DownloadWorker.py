@@ -333,3 +333,14 @@ class DownloadTask(QRunnable):
                 self.signals.progress.emit(0)
             else:
                 self.signals.error.emit(f"Download failed: {str(e)}")
+        finally:
+            try:
+                self.signals.progress.disconnect()
+                self.signals.finished.disconnect()
+                self.signals.canceled.disconnect()
+                self.signals.error.disconnect()
+                self.signals.status.disconnect()
+                self.signals.file_progress.disconnect()
+                self.signals.conversion_step.disconnect()
+            except:
+                pass

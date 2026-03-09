@@ -12,15 +12,26 @@ Rectangle {
     Layout.fillHeight: true
     Layout.minimumHeight: 150
 
-    function log(message) {
+    function log(message, type) {
         var timestamp = new Date().toLocaleTimeString()
-        logTextArea.text += "[" + timestamp + "] " + message + "\n"
+        var color = "#00ff00" // Default green
+
+        // Set color based on message type
+        if (type === "error") color = "#ff5555"      // Red for errors
+        else if (type === "success") color = "#55ff55" // Bright green for success
+        else if (type === "progress") color = "#ffff55" // Yellow for progress
+        else if (type === "info") color = "#55aaff"     // Blue for info
+        else if (type === "warning") color = "#ffaa00"  // Orange for warnings
+
+        // Insert colored text using HTML
+        logTextArea.insert(logTextArea.length,
+            `<font color="${color}">[${timestamp}] ${message}</font><br>`)
         logTextArea.cursorPosition = logTextArea.length
     }
 
     function clear() {
         logTextArea.text = ""
-        log("Logs ready")
+        log("Logs ready", "info")
     }
 
     ScrollView {
@@ -34,7 +45,7 @@ Rectangle {
             font.pixelSize: 11
             readOnly: true
             wrapMode: TextArea.Wrap
-            color: "#00ff00"
+            textFormat: TextEdit.RichText  // Enable rich text
             background: Rectangle {
                 color: "#1e1e1e"
             }
@@ -49,115 +60,96 @@ Rectangle {
         enabled: typeof ModelDownloader !== "undefined"
 
         function onDownloadStarted() {
-            log("Download started")
+            log("Download started", "info")
         }
 
         function onDownloadFinished(path) {
-            log("Download completed: " + path)
+            log("Download completed: " + path, "success")
         }
 
         function onDownloadErrorOccurred(error) {
-            log("Error: " + error)
+            log("Error: " + error, "error")
         }
 
         function onStatusMessageChanged() {
             if (ModelDownloader.statusMessage) {
-                log("ℹ " + ModelDownloader.statusMessage)
+                log(ModelDownloader.statusMessage, "info")
             }
         }
 
         function onDownloadProgressChanged() {
-            // Log at 25%, 50%, 75%, 100%
             var progress = ModelDownloader.downloadProgress
             if (progress === 25 || progress === 50 || progress === 75 || progress === 100) {
-                log("Download progress: " + progress + "%")
+                log("Download progress: " + progress + "%", "progress")
             }
         }
 
         function onDownloadLocationChanged(location) {
-            log("Download location: " + location)
+            log("Download location: " + location, "info")
         }
 
         function onModelVersionChanged(version) {
-            log("Model version: " + version)
+            log("Model version: " + version, "info")
         }
 
         function onFileDownloadProgress(filename, current, total) {
-            // Only log occasionally to avoid spam
             if (current === total) {
-                log("Downloaded: " + filename)
+                log("Downloaded: " + filename, "success")
             }
         }
     }
 
-    // Connections to ModelTransformer (context property)
+    // Connections to ModelTransformer (which is actually ModelConverter)
     Connections {
         target: ModelTransformer
         enabled: typeof ModelTransformer !== "undefined"
 
-        function onTransformationStarted() {
-            log("Transformation started")
+        function onConversionStarted() {
+            log("Conversion started", "info")
         }
 
-        function onTransformationFinished(outputPath) {
-            log("Transformation completed: " + outputPath)
+        function onConversionCompleted(outputPath) {
+            log("Conversion completed: " + outputPath, "success")
         }
 
-        function onTransformationError(error) {
-            log("Transformation error: " + error)
+        function onConversionError(error) {
+            log("Conversion error: " + error, "error")
         }
 
-        function onStatusMessageChanged() {
-            if (ModelTransformer.statusMessage) {
-                log("ℹ" + ModelTransformer.statusMessage)
+        function onConversionStatusChanged() {
+            if (ModelTransformer.conversionStatus) {
+                var status = ModelTransformer.conversionStatus
+                if (status.includes("Error") || status.includes("Failed")) {
+                    log(status, "error")
+                } else {
+                    log(status, "info")
+                }
             }
         }
 
-        function onProgressChanged() {
-            var progress = ModelTransformer.progressValue
+        function onConversionProgressChanged() {
+            var progress = ModelTransformer.conversionProgress
             if (progress === 25 || progress === 50 || progress === 75 || progress === 100) {
-                log("Transformation progress: " + progress + "%")
+                log("Conversion progress: " + progress + "%", "progress")
             }
+        }
+
+        function onConversionStepChanged(step) {
+            log(step, "info")
         }
 
         function onOutputLocationChanged(location) {
-            log("Output location: " + location)
+            log("Output location: " + location, "info")
         }
 
-        function onSourceFrameworkChanged(framework) {
-            log("Source framework: " + framework)
+        function onModelNameChanged(name) {
+            log("Model: " + name, "info")
         }
 
-        function onTargetFrameworkChanged(framework) {
-            log("Target framework: " + framework)
-        }
-
-        function onExportFormatChanged(format) {
-            log("Export format: " + format)
-        }
-
-        function onConversionStep(step) {
-            log("⚙Step: " + step)
-        }
-
-        function onModelLoaded(path) {
-            log("Model loaded: " + path)
-        }
-
-        function onOptimizationStarted() {
-            log("Model optimization started")
-        }
-
-        function onOptimizationCompleted() {
-            log("Model optimization completed")
-        }
-
-        function onQuantizationStarted(type) {
-            log("Quantization started: " + type)
-        }
-
-        function onQuantizationCompleted() {
-            log("Quantization completed")
+        function onIsConvertingChanged() {
+            if (!ModelTransformer.isConverting) {
+                log("Conversion stopped", "warning")
+            }
         }
     }
 
@@ -166,23 +158,26 @@ Rectangle {
         var connected = false
 
         if (typeof ModelDownloader !== "undefined") {
-            log("Connected to ModelDownloader")
+            log("Connected to ModelDownloader", "success")
             if (ModelDownloader.downloadLocation) {
-                log("Default download location: " + ModelDownloader.downloadLocation)
+                log("Default download location: " + ModelDownloader.downloadLocation, "info")
             }
             connected = true
         }
 
         if (typeof ModelTransformer !== "undefined") {
-            log("Connected to ModelTransformer")
+            log("Connected to ModelTransformer", "success")
             if (ModelTransformer.outputLocation) {
-                log("Default output location: " + ModelTransformer.outputLocation)
+                log("Default output location: " + ModelTransformer.outputLocation, "info")
             }
+            log("isConverting: " + ModelTransformer.isConverting, "info")
+            log("conversionProgress: " + ModelTransformer.conversionProgress, "info")
+            log("conversionStatus: " + ModelTransformer.conversionStatus, "info")
             connected = true
         }
 
         if (!connected) {
-            log("⚠No model backend found")
+            log("No model backend found", "warning")
         }
     }
 }

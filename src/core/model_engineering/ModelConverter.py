@@ -11,7 +11,6 @@ from pathlib import Path
 import os
 from src.core.model_engineering.ModelConverterWorker import ModelConverterTask
 
-
 class ModelConverter(QtCore.QObject):
     # =============================================
     # Signals
@@ -108,22 +107,31 @@ class ModelConverter(QtCore.QObject):
     def _on_conversion_finished(self, output_path: str):
         self._setIsConverting(False)
         self._setConversionProgress(100)
-        self._setConversionStatus(f"Conversion completed successfully!")
+        self._setConversionStatus("Conversion completed successfully!")
         self.conversionCompleted.emit(output_path)
-        self._currentWorker = None
+
+        # Clean up worker
+        if self._currentWorker:
+            self._currentWorker = None
 
     def _on_conversion_canceled(self):
         self._setIsConverting(False)
         self._setConversionProgress(0)
         self._setConversionStatus("Conversion canceled")
-        self._currentWorker = None
+
+        # Clean up worker
+        if self._currentWorker:
+            self._currentWorker = None
 
     def _on_conversion_error(self, error_msg: str):
         self._setIsConverting(False)
         self._setConversionProgress(0)
         self._setConversionStatus(f"Error: {error_msg}")
         self.conversionError.emit(error_msg)
-        self._currentWorker = None
+
+        # Clean up worker
+        if self._currentWorker:
+            self._currentWorker = None
 
     def _on_file_progress(self, filename: str, current: int, total: int):
         # Optional: handle file progress if needed
@@ -164,9 +172,19 @@ class ModelConverter(QtCore.QObject):
             self.conversionError.emit("Model path cannot be empty")
             return
 
+        # IMPORTANT: Check if already converting
         if self._isConverting:
-            self.conversionError.emit("A conversion is already in progress")
+            self.conversionError.emit("A conversion is already in progress. Please wait for it to complete.")
             return
+
+        # Clean up any existing worker reference
+        if self._currentWorker is not None:
+            try:
+                if hasattr(self._currentWorker, 'cancel'):
+                    self._currentWorker.cancel()
+                self._currentWorker = None
+            except:
+                pass
 
         # Clean up file:// prefix if present
         if modelPath.startswith("file://"):
@@ -183,7 +201,7 @@ class ModelConverter(QtCore.QObject):
         # Extract model name for display
         self.setModelName(modelPath)
 
-        # Create worker
+        # Create new worker for each conversion
         worker = ModelConverterTask(
             model_path=modelPath,
             from_framework=fromFramework,
@@ -200,12 +218,16 @@ class ModelConverter(QtCore.QObject):
         worker.signals.file_progress.connect(self._on_file_progress)
         worker.signals.conversion_step.connect(self._on_conversion_step)
 
+        # Store worker reference
         self._currentWorker = worker
+
+        # Update state
         self._setIsConverting(True)
         self._setConversionProgress(0)
         self._setConversionStatus(f"Starting conversion to {toFramework}...")
         self.conversionStarted.emit()
 
+        # Start the worker
         self._threadpool.start(worker)
 
     @Slot()

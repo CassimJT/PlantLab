@@ -6,21 +6,20 @@ import QtQuick.Dialogs
 Page {
     id: root
 
-    // Properties
-    property string modelSource: ""           // HF repo ID or local .pt path
+    // Properties - match ModelConverter's actual property names
+    property string modelSource: ""
     property string outputPath: ModelTransformer ? ModelTransformer.outputLocation : StandardPaths.writableLocation(StandardPaths.DownloadLocation) + "/plantlab/models"
     property string selectedFramework: "ONNX"
-    property bool transforming: ModelTransformer ? ModelTransformer.isTransforming : false
-    property double progressValue: ModelTransformer ? ModelTransformer.progressValue : 0
-    property string statusMessage: ModelTransformer ? ModelTransformer.statusMessage : "Ready to transform model"
+    property bool transforming: ModelTransformer ? ModelTransformer.isConverting : false
+    property double progressValue: ModelTransformer ? ModelTransformer.conversionProgress : 0
+    property string statusMessage: ModelTransformer ? ModelTransformer.conversionStatus : "Ready to transform model"
 
     ColumnLayout {
         spacing: 15
         anchors {
             left: parent.left
             right: parent.right
-            rightMargin: 20
-            leftMargin: 20
+            margins: 20
         }
 
         // ── Model Input Section ────────────────────────────────────────
@@ -192,6 +191,8 @@ Page {
                     text: statusMessage
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
+                    elide: Text.ElideRight
+                    maximumLineCount: 2
 
                     color: {
                         if (statusMessage.includes("Error")) return "red"
@@ -206,6 +207,8 @@ Page {
                     visible: modelSource !== ""
                     font.italic: true
                     color: "#555"
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
                 }
 
                 Label {
@@ -244,13 +247,16 @@ Page {
                             ModelTransformer.setOutputLocation(outputPath)
                         }
 
-                        // Call transformModel with parameters
-                        ModelTransformer.transformModel(
-                            modelSource,
-                            sourceFrameworkCombo.currentText.split(" ")[0], // Extract framework name
-                            selectedFramework,
-                            outputPath
-                        )
+                        // Extract framework name without the extension
+                        var fromFramework = sourceFrameworkCombo.currentText.split(" ")[0]
+
+                        // Call transform method (not transformModel)
+                        ModelTransformer.transform(
+                                    modelSource,
+                                    fromFramework,
+                                    selectedFramework,
+                                    outputPath
+                                    )
                     }
                 }
             }
@@ -260,11 +266,13 @@ Page {
                 onClicked: {
                     modelIdField.text = ""
                     modelSource = ""
+                    statusLabel.text = ""
                     sourceFrameworkCombo.currentIndex = 0
                     onnxRadio.checked = true
                     updateSelectedFramework("ONNX")
                     outputPath = StandardPaths.writableLocation(StandardPaths.DownloadLocation) + "/plantlab/models"
                     pathField.text = outputPath
+
                     statusMessage = "Ready to transform model"
                     progressValue = 0
 
@@ -338,30 +346,36 @@ Page {
         target: ModelTransformer
         enabled: typeof ModelTransformer !== "undefined"
 
-        function onProgressChanged(progress) {
+        // Use the actual signal names from ModelConverter
+        function onConversionProgressChanged(progress) {
             root.progressValue = progress
         }
 
-        function onStatusMessageChanged(message) {
-            root.statusMessage = message
+        function onConversionStatusChanged(status) {
+            root.statusMessage = status
         }
 
-        function onIsTransformingChanged() {
-            root.transforming = ModelTransformer.isTransforming
+        function onIsConvertingChanged() {
+            root.transforming = ModelTransformer.isConverting
         }
 
-        function onTransformationFinished(outputPath) {
-            transformCompleteDialog.open()
-            transformCompleteDialog.informativeText = "Source: " + modelSource + "\nTarget: " + selectedFramework + "\n\nLocation: " + outputPath
+        function onConversionCompleted(path) {
+            //transformCompleteDialog.open()
+            //transformCompleteDialog.informativeText = "Source: " + modelSource + "\nTarget: " + selectedFramework + "\n\nLocation: " + path
         }
 
-        function onTransformationError(error) {
-            root.statusMessage = "Error: " + error
+        function onConversionError(error) {
+            //root.statusMessage = "Error: " + error
         }
 
         function onOutputLocationChanged(location) {
             root.outputPath = location
             pathField.text = location
+        }
+
+        function onConversionStepChanged(step) {
+            // Optionally update status with current step
+            // root.statusMessage = step
         }
     }
 
@@ -372,9 +386,9 @@ Page {
         if (ModelTransformer) {
             pathField.text = ModelTransformer.outputLocation
             outputPath = ModelTransformer.outputLocation
-            transforming = ModelTransformer.isTransforming
-            progressValue = ModelTransformer.progressValue
-            statusMessage = ModelTransformer.statusMessage
+            transforming = ModelTransformer.isConverting
+            progressValue = ModelTransformer.conversionProgress
+            statusMessage = ModelTransformer.conversionStatus
         }
     }
 }
