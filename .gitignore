@@ -42,6 +42,9 @@ Makefile*
 # Qt unit tests
 target_wrapper.*
 
+# Ignore large model files
+assets/model/
+
 # QtCreator
 *.autosave
 
