@@ -6,6 +6,8 @@ import tf2onnx
 import tensorflow as tf
 import onnx
 import torch
+import torch.nn as nn
+import torchvision
 import executorch
 import shutil
 from pathlib import Path
@@ -57,8 +59,29 @@ class ModelConverterTask(QRunnable):
         self._canceled = True
         self.signals.canceled.emit(True)
 
+    def _rebuild_mobilenetv3(self, model_type: str, num_classes: int):
+        """Rebuild MobileNetV3 model architecture from type and number of classes"""
+        if "mobilenetv3_small" in model_type:
+            weights = torchvision.models.MobileNet_V3_Small_Weights.IMAGENET1K_V1
+            model = torchvision.models.mobilenet_v3_small(weights=weights)
+            in_features = model.classifier[3].in_features
+            model.classifier[3] = nn.Linear(in_features, num_classes)
+        elif "mobilenetv3_large" in model_type:
+            weights = torchvision.models.MobileNet_V3_Large_Weights.IMAGENET1K_V1
+            model = torchvision.models.mobilenet_v3_large(weights=weights)
+            in_features = model.classifier[3].in_features
+            model.classifier[3] = nn.Linear(in_features, num_classes)
+        else:
+            # Default to small
+            weights = torchvision.models.MobileNet_V3_Small_Weights.IMAGENET1K_V1
+            model = torchvision.models.mobilenet_v3_small(weights=weights)
+            in_features = model.classifier[3].in_features
+            model.classifier[3] = nn.Linear(in_features, num_classes)
+
+        return model
+
     def _load_pytorch_model(self, model_path):
-        """Load PyTorch model with support for YOLO/Ultralytics and regular models"""
+        """Load PyTorch model with support for YOLO/Ultralytics, training checkpoints, and regular models"""
         self.signals.conversion_step.emit("Loading PyTorch model...")
 
         # Try loading as YOLO model first if ultralytics is available
@@ -86,24 +109,39 @@ class ModelConverterTask(QRunnable):
             pass
 
         # Try loading with weights_only=False for regular PyTorch models
-        # This is safe because user selected the file locally
         try:
             self.signals.status.emit("Attempting to load as regular PyTorch model...")
-            # Use weights_only=False for custom classes like YOLO
             checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
 
             # Handle different checkpoint formats
             if isinstance(checkpoint, dict):
                 self.signals.status.emit("Checkpoint dictionary detected, extracting model...")
 
-                # Try different common keys for the model
-                if 'model' in checkpoint:
+                # Check if this is your training checkpoint with state_dict
+                if 'model_state_dict' in checkpoint:
+                    self.signals.status.emit("Training checkpoint detected - rebuilding model...")
+
+                    # Get metadata from checkpoint
+                    num_classes = checkpoint.get('num_classes', 12)
+                    model_type = checkpoint.get('model_type', 'mobilenetv3_small')
+
+                    # Rebuild the model architecture
+                    model = self._rebuild_mobilenetv3(model_type, num_classes)
+
+                    # Load the state dict
+                    model.load_state_dict(checkpoint['model_state_dict'])
+                    model.eval()
+                    self.signals.status.emit("Successfully loaded training checkpoint")
+                    return model
+
+                # Try different common keys for direct model saves
+                elif 'model' in checkpoint:
                     model = checkpoint['model']
                 elif 'ema' in checkpoint:  # YOLO often stores EMA model
                     model = checkpoint['ema']
                 elif 'state_dict' in checkpoint:
-                    # Just the state dict, we need to create a model first
-                    self.signals.error.emit("State dict only - need full model architecture")
+                    # Just the state dict with no architecture info
+                    self.signals.error.emit("State dict only - need model architecture information")
                     return None
                 else:
                     # Maybe it's the model itself wrapped in a dict?
@@ -296,7 +334,6 @@ class ModelConverterTask(QRunnable):
     def _ensure_executorch_schema_files(self):
         """Ensure required schema files exist for ExecuTorch export"""
         try:
-
             exec_path = Path(executorch.__file__).parent
             schema_dir = exec_path / "exir" / "_serialize"
             schema_dir.mkdir(exist_ok=True, parents=True)
@@ -313,9 +350,7 @@ class ModelConverterTask(QRunnable):
                         shutil.copy(source_dir / "scalar_type_fbs", scalar_type_fbs)
         except Exception:
             pass
-    # =======================================================================================
-    # _convert_to_tensorflow
-    # ======================================================================================
+
     def _convert_to_tensorflow(self, model, example_input, model_name):
         """Convert PyTorch model to ONNX (TensorFlow compatible via ONNX Runtime)"""
         self.signals.conversion_step.emit("Converting to ONNX (TensorFlow compatible)...")

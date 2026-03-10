@@ -36,20 +36,40 @@ class ModelTrainerSignals(QObject):
 
 class ImageDatasetFromCSV(Dataset):
     """Custom Dataset that loads images from paths in a CSV file (matches your export format)"""
-    def __init__(self, csv_file, transform=None):
+    def __init__(self, csv_file, transform=None, class_mapping=None):
         self.data = pd.read_csv(csv_file)
         self.transform = transform
+        self.class_mapping = class_mapping
 
         # Your CSV has these columns: absolute_path, relative_path, filename, folder, file_size
         self.image_paths = self.data['absolute_path'].values
         self.folders = self.data['folder'].values
 
-        # Get unique classes from folder names
-        self.classes = sorted(list(set(self.folders)))
-        self.class_to_idx = {cls: idx for idx, cls in enumerate(self.classes)}
+        if class_mapping:
+            # Use provided mapping (folder names to actual class names)
+            self.classes = sorted(list(set(class_mapping.values())))
+            self.class_to_idx = {cls: idx for idx, cls in enumerate(self.classes)}
 
-        # Convert folder names to label indices
-        self.labels = [self.class_to_idx[folder] for folder in self.folders]
+            # Map folder names to actual class names then to indices
+            self.labels = []
+            for folder in self.folders:
+                actual_class = class_mapping[folder]
+                self.labels.append(self.class_to_idx[actual_class])
+        else:
+            # Try to extract from filename as fallback
+            def extract_class_name(filename):
+                return filename.split('-')[0].lower()
+
+            self.classes = []
+            self.labels = []
+            class_to_idx = {}
+
+            for filename in self.data['filename'].values:
+                class_name = extract_class_name(filename)
+                if class_name not in class_to_idx:
+                    class_to_idx[class_name] = len(class_to_idx)
+                    self.classes.append(class_name)
+                self.labels.append(class_to_idx[class_name])
 
     def __len__(self):
         return len(self.data)
@@ -72,9 +92,38 @@ class ImageDatasetFromCSV(Dataset):
         return image, label
 
 
+class SplitDataset(Dataset):
+    """Dataset for train/val splits that applies transforms only once"""
+    def __init__(self, indices, image_paths, labels, transform):
+        self.indices = indices
+        self.image_paths = [image_paths[i] for i in indices]
+        self.labels = [labels[i] for i in indices]
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx):
+        img_path = self.image_paths[idx]
+        label = self.labels[idx]
+
+        # Load image (already normalized by NormalizationTask)
+        try:
+            image = Image.open(img_path).convert('RGB')
+        except Exception as e:
+            print(f"Error loading image {img_path}: {e}")
+            image = Image.new('RGB', (224, 224), color='black')
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
+
+
 class ModelTrainerTask(QRunnable):
     def __init__(self, dataset_path: str, model_type: str, epochs: int,
-                 batch_size: int, learning_rate: float, train_test_split: float):
+                 batch_size: int, learning_rate: float, train_test_split: float,
+                 class_mapping: dict = None):
         super().__init__()
         self.dataset_path = dataset_path
         self.model_type = model_type
@@ -82,6 +131,7 @@ class ModelTrainerTask(QRunnable):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.train_test_split = train_test_split
+        self.class_mapping = class_mapping
         self.signals = ModelTrainerSignals()
         self._is_paused = False
         self._is_canceled = False
@@ -89,6 +139,8 @@ class ModelTrainerTask(QRunnable):
         self._pause_wait_condition = QWaitCondition()
         self.last_loss = 0.0
         self.last_accuracy = 0.0
+        self._final_model_path = None
+        self._best_model_path = None
         self.setAutoDelete(False)
 
         # Set default output location
@@ -136,36 +188,37 @@ class ModelTrainerTask(QRunnable):
         self.signals.file_progress.emit("Reading CSV...", 0, 100)
 
         # Define transforms for training and validation
+        # Images are already normalized by NormalizationTask, so only ToTensor and ImageNet normalization
         train_transform = transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
+            transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomRotation(10),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                std=[0.229, 0.224, 0.225])
         ])
 
         val_transform = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                std=[0.229, 0.224, 0.225])
         ])
 
-        # Load full dataset from CSV
+        # Load raw dataset WITHOUT transforms
         self.signals.file_progress.emit("Loading CSV data...", 20, 100)
-        full_dataset = ImageDatasetFromCSV(self.dataset_path, transform=train_transform)
+        raw_dataset = ImageDatasetFromCSV(
+            self.dataset_path,
+            transform=None,
+            class_mapping=self.class_mapping
+        )
 
-        # Get class names (from folder names)
-        self.class_names = full_dataset.classes
+        # Get class names
+        self.class_names = raw_dataset.classes
         num_classes = len(self.class_names)
         self.signals.status.emit(f"Found {num_classes} classes: {', '.join(self.class_names[:5])}...")
-        self.signals.status.emit(f"Total images: {len(full_dataset)}")
+        self.signals.status.emit(f"Total images: {len(raw_dataset)}")
 
         # Split dataset
-        dataset_size = len(full_dataset)
+        dataset_size = len(raw_dataset)
         train_size = int(self.train_test_split * dataset_size)
         val_size = dataset_size - train_size
 
@@ -178,22 +231,20 @@ class ModelTrainerTask(QRunnable):
             generator=generator
         )
 
-        # Create validation dataset with its own transform
-        class SplitDataset(Dataset):
-            def __init__(self, indices, full_dataset, transform):
-                self.indices = indices
-                self.full_dataset = full_dataset
-                self.transform = transform
+        # Create split datasets with transforms applied ONCE
+        train_dataset = SplitDataset(
+            train_indices.indices,
+            raw_dataset.image_paths,
+            raw_dataset.labels,
+            train_transform
+        )
 
-            def __len__(self):
-                return len(self.indices)
-
-            def __getitem__(self, idx):
-                img, label = self.full_dataset[self.indices[idx]]
-                return self.transform(img), label
-
-        train_dataset = SplitDataset(train_indices.indices, full_dataset, train_transform)
-        val_dataset = SplitDataset(val_indices.indices, full_dataset, val_transform)
+        val_dataset = SplitDataset(
+            val_indices.indices,
+            raw_dataset.image_paths,
+            raw_dataset.labels,
+            val_transform
+        )
 
         self.signals.file_progress.emit("Creating data loaders...", 60, 100)
 
@@ -363,6 +414,7 @@ class ModelTrainerTask(QRunnable):
 
             best_accuracy = 0.0
             best_model_path = None
+            training_history = []  # Track training history
 
             # Training loop
             for epoch in range(1, self.epochs + 1):
@@ -384,6 +436,15 @@ class ModelTrainerTask(QRunnable):
                 # Update learning rate
                 scheduler.step()
 
+                # Track history
+                training_history.append({
+                    'epoch': epoch,
+                    'train_loss': train_loss,
+                    'train_acc': train_acc,
+                    'val_loss': val_loss,
+                    'val_acc': val_acc
+                })
+
                 # Store current values
                 self.last_loss = val_loss
                 self.last_accuracy = val_acc
@@ -403,38 +464,77 @@ class ModelTrainerTask(QRunnable):
                 # Save best model
                 if val_acc > best_accuracy:
                     best_accuracy = val_acc
+                    timestamp = int(time.time())
                     best_model_path = os.path.join(
                         self._outputLocation,
-                        f"best_model_{self.model_type}_epoch{epoch}_{int(time.time())}.pth"
+                        f"best_model_{self.model_type}_epoch{epoch}_{timestamp}.pth"
                     )
+
+                    # Save with comprehensive metadata
                     torch.save({
                         'epoch': epoch,
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
                         'best_accuracy': best_accuracy,
-                        'class_names': self.class_names
+                        'class_names': self.class_names,
+                        'num_classes': num_classes,
+                        'model_type': self.model_type,
+                        'input_size': (3, 224, 224),  # Standard input size
+                        'training_history': training_history[-5:],  # Last 5 epochs
+                        'hyperparameters': {
+                            'epochs': self.epochs,
+                            'batch_size': self.batch_size,
+                            'learning_rate': self.learning_rate,
+                            'train_test_split': self.train_test_split,
+                            'device': str(self.device)
+                        }
                     }, best_model_path)
                     self.signals.status.emit(f"New best model saved! Accuracy: {best_accuracy:.2%}")
 
             # Training completed
             self.signals.conversion_step.emit("Finalizing model...")
 
+            # Calculate final metrics on validation set
+            _, final_accuracy = self._validate(model, val_loader, criterion)
+
             # Save final model
+            timestamp = int(time.time())
             final_model_path = os.path.join(
                 self._outputLocation,
-                f"final_model_{self.model_type}_{int(time.time())}.pth"
+                f"final_model_{self.model_type}_{timestamp}.pth"
             )
+
+            # Save with complete metadata
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'class_names': self.class_names,
                 'num_classes': num_classes,
-                'model_type': self.model_type
+                'model_type': self.model_type,
+                'input_size': (3, 224, 224),
+                'final_accuracy': final_accuracy,
+                'best_accuracy': best_accuracy,
+                'training_history': training_history,
+                'hyperparameters': {
+                    'epochs': self.epochs,
+                    'batch_size': self.batch_size,
+                    'learning_rate': self.learning_rate,
+                    'train_test_split': self.train_test_split,
+                    'device': str(self.device)
+                },
+                'timestamp': timestamp,
+                'class_mapping': self.class_mapping,
+                'dataset_info': {
+                    'num_classes': num_classes,
+                    'class_names': self.class_names,
+                    'total_images': len(train_loader.dataset) + len(val_loader.dataset)
+                }
             }, final_model_path)
 
-            self.signals.status.emit(f"Final model saved to: {final_model_path}")
+            # Store paths for export
+            self._final_model_path = final_model_path
+            self._best_model_path = best_model_path
 
-            # Calculate final metrics on validation set
-            _, final_accuracy = self._validate(model, val_loader, criterion)
+            self.signals.status.emit(f"Final model saved to: {final_model_path}")
 
             # For precision/recall, we'd need to compute per class
             # This is a simplified version

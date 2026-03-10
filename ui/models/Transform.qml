@@ -301,9 +301,13 @@ Page {
     // ── Dialogs ────────────────────────────────────────────────────────
     FileDialog {
         id: fileDialog
-        title: "Select PyTorch model file (.pt)"
-        nameFilters: ["PyTorch models (*.pt)", "All files (*)"]
+        title: "Select PyTorch model file (.pt or .pth)"
+        nameFilters: [
+            "PyTorch models (*.pt *.pth)",   // Shows both extensions in the dropdown
+            "All files (*)"
+        ]
         fileMode: FileDialog.OpenFile
+
         onAccepted: {
             var filePath = fileDialog.selectedFile.toString()
             if (filePath.startsWith("file://")) {

@@ -1,7 +1,8 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
-import QtQuick.Layouts
+import QtQuick.Layouts 2.15
 import QtQuick.Dialogs
+import Qt.labs.platform 1.1
 
 Page {
     id: root
@@ -15,336 +16,366 @@ Page {
     property double currentLoss: ModelTrainer ? ModelTrainer.currentLoss : 0
     property double currentAccuracy: ModelTrainer ? ModelTrainer.currentAccuracy : 0
 
-    ColumnLayout {
-        spacing: 15
-        anchors {
-            left: parent.left
-            right: parent.right
-            margins: 20
-        }
+    Flickable {
+        anchors.fill: parent
+        contentWidth: parent.width
+        contentHeight: contentColumn.height + 40
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-        // ================= DATASET =================
-        GroupBox {
-            title: "1. Dataset"
-            Layout.fillWidth: true
-
-            RowLayout {
-                spacing: 10
-                width: parent.width
-
-                TextField {
-                    id: csvPath
-                    Layout.fillWidth: true
-                    placeholderText: "Select normalized CSV file / a path to dataset..."
-                    readOnly: true
-                    text: datasetPath
-
-                    // Update when ModelTrainer dataset changes
-                    Connections {
-                        target: ModelTrainer
-                        function onDataSetPathChanged() {
-                            csvPath.text = ModelTrainer.datasetPath
-                        }
-                    }
-                }
-
-                Button {
-                    text: "Browse"
-                    onClicked: fileDialog.open()
-                }
+        ColumnLayout {
+            id: contentColumn
+            width: parent.width
+            spacing: 15
+            anchors {
+                left: parent.left
+                right: parent.right
+                margins: 20
             }
-        }
 
-        // ================= PARAMETERS =================
-        GroupBox {
-            title: "2. Training Parameters"
-            Layout.fillWidth: true
-
-            GridLayout {
-                columns: 2
-                columnSpacing: 12
-                rowSpacing: 10
+            // ================= DATASET =================
+            GroupBox {
+                title: "1. Dataset"
                 Layout.fillWidth: true
 
-                Label { text: "Model Type:" }
-                ComboBox {
-                    id: modelType
-                    Layout.preferredWidth: parent.width * 0.7
-                    model: ["MobileNetV3-Small (fastest)",
-                        "MobileNetV3-Large (more accurate)",
-                        "SSDLite-MobileNetV3 (for detection)"]
-                    currentIndex: 0
-                }
-
-                Label { text: "Epochs:" }
-                SpinBox {
-                    id: epochs
-                    from: 1
-                    to: 100
-                    value: ModelTrainer ? ModelTrainer.epoch : 15
-
-                    onValueChanged: {
-                        if (ModelTrainer) {
-                            ModelTrainer.setEpoch(value)
-                        }
-                    }
-                }
-
-                Label { text: "Batch Size:" }
-                SpinBox {
-                    id: batchSize
-                    from: 1
-                    to: 128
-                    value: ModelTrainer ? ModelTrainer.batchSize : 8
-
-                    onValueChanged: {
-                        if (ModelTrainer) {
-                            ModelTrainer.setBatchSize(value)
-                        }
-                    }
-                }
-
-                Label { text: "Learning Rate:" }
-                TextField {
-                    id: lr
-                    text: ModelTrainer ? ModelTrainer.learningRate : "0.0001"
-                    validator: DoubleValidator { bottom: 0.000001 }
-
-                    onTextChanged: {
-                        if (ModelTrainer) {
-                            ModelTrainer.setLearningRate(parseFloat(text))
-                        }
-                    }
-                }
-
-                Label { text: "Train/Test Split:" }
-                Slider {
-                    id: split
-                    from: 0.5
-                    to: 0.95
-                    value: ModelTrainer ? ModelTrainer.trainTestSplit / 100 : 0.8
-
-                    onValueChanged: {
-                        if (ModelTrainer) {
-                            ModelTrainer.setTrainTestSplit(Math.round(value * 100))
-                        }
-                    }
-                }
-
-                Label {
-                    text: Math.round(split.value * 100) + "% train"
-                }
-            }
-        }
-
-        // ================= PROGRESS & STATUS =================
-        GroupBox {
-            title: "3. Training Status"
-            Layout.fillWidth: true
-
-            ColumnLayout {
-                width: parent.width
-                spacing: 5
-
                 RowLayout {
-                    Layout.preferredWidth: parent.width
-                    spacing: 2
+                    spacing: 10
+                    width: parent.width
 
-                    ProgressBar {
-                        id: progressBar
+                    TextField {
+                        id: csvPath
                         Layout.fillWidth: true
-                        from: 0
-                        to: 100
-                        value: progressValue
-                        visible: training
+                        placeholderText: "Select normalized CSV file / a path to dataset..."
+                        readOnly: true
+                        text: datasetPath
 
-                        BusyIndicator {
-                            width: 20
-                            height: width
-                            anchors.centerIn: parent
-                            visible: training
-                            running: training
-                            z: 10
-                        }
-                    }
-
-                    Label {
-                        id: percentage
-                        text: progressBar.value + "%"
-                        color: "green"
-                        visible: training
-                        font.bold: true
-                    }
-                }
-
-                // Status message (same pattern as Transform page)
-                Label {
-                    id: statusLabel
-                    text: statusMessage
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    elide: Text.ElideRight
-                    maximumLineCount: 2
-
-                    color: {
-                        if (statusMessage.includes("Error") || statusMessage.includes("failed")) return "red"
-                        if (statusMessage.includes("Success") || statusMessage.includes("completed")) return "green"
-                        if (training) return "blue"
-                        return "black"
-                    }
-                }
-
-                // Metrics display
-                RowLayout {
-                    Layout.fillWidth: true
-                    visible: training || currentLoss > 0 || currentAccuracy > 0
-
-                    Label {
-                        text: "Loss: " + (currentLoss ? currentLoss.toFixed(4) : "--")
-                        color: "#555"
-                        font.italic: true
-                    }
-
-                    Label {
-                        text: "Accuracy: " + (currentAccuracy ? (currentAccuracy * 100).toFixed(1) + "%" : "--")
-                        color: "#555"
-                        font.italic: true
-                    }
-                }
-
-                // Info labels
-                Label {
-                    text: "Dataset: " + (datasetPath ? (datasetPath.length > 40 ? "..." + datasetPath.substring(datasetPath.length - 40) : datasetPath) : "Not set")
-                    visible: datasetPath !== ""
-                    font.italic: true
-                    color: "#555"
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-
-                Label {
-                    text: "Model: " + (modelType.currentText.split(" ")[0] || "Not selected")
-                    font.italic: true
-                    color: "#555"
-                }
-            }
-        }
-
-        // ================= TRAIN CONTROL =================
-        GroupBox {
-            title: "4. Training Control"
-            Layout.fillWidth: true
-
-            RowLayout {
-                spacing: 12
-
-                Button {
-                    text: training ? "Stop Training" : "Start Training"
-                    enabled: !training ? csvPath.text.length > 0 : true
-                    highlighted: !training
-
-                    onClicked: {
-                        if (ModelTrainer) {
-                            if (training) {
-                                ModelTrainer.stopTraining()
-                            } else {
-                                ModelTrainer.setDatasetPath(csvPath.text)
-                                ModelTrainer.startTraining(modelType.currentText)
+                        // Update when ModelTrainer dataset changes
+                        Connections {
+                            target: ModelTrainer
+                            function onDataSetPathChanged() {
+                                csvPath.text = ModelTrainer.datasetPath
                             }
                         }
                     }
-                }
 
-                Button {
-                    text: "Pause"
-                    enabled: training
-                    visible: training
-
-                    onClicked: {
-                        if (ModelTrainer) {
-                            ModelTrainer.pauseTraining()
-                        }
+                    Button {
+                        text: "Browse"
+                        onClicked: fileDialog.open()
                     }
-                }
-
-                Button {
-                    text: "Resume"
-                    enabled: training
-                    visible: training
-
-                    onClicked: {
-                        if (ModelTrainer) {
-                            ModelTrainer.resumeTraining()
-                        }
-                    }
-                }
-
-                Button {
-                    text: "Clear"
-                    onClicked: {
-                        csvPath.text = ""
-                        modelType.currentIndex = 0
-                        epochs.value = 15
-                        batchSize.value = 8
-                        lr.text = "0.0001"
-                        split.value = 0.8
-                        statusMessage = "Ready to train model"
-                        progressValue = 0
-
-                        if (training && ModelTrainer) {
-                            ModelTrainer.stopTraining()
-                        }
-                    }
-                }
-
-                Button {
-                    text: "Open Dataset Folder"
-                    onClicked: {
-                        if (datasetPath) {
-                            var folder = datasetPath.substring(0, datasetPath.lastIndexOf("/"))
-                            Qt.openUrlExternally("file:///" + folder)
-                        }
-                    }
-                    enabled: datasetPath !== ""
                 }
             }
-        }
 
-        // ================= RESULTS =================
-        GroupBox {
-            id: resultsBox
-            title: "5. Results"
-            Layout.fillWidth: true
-            visible: !training && progressValue >= 100
+            // ================= PARAMETERS =================
+            GroupBox {
+                title: "2. Training Parameters"
+                Layout.fillWidth: true
 
-            ColumnLayout {
-                spacing: 6
+                GridLayout {
+                    columns: 2
+                    columnSpacing: 12
+                    rowSpacing: 10
+                    Layout.fillWidth: true
 
-                Label {
-                    id: accuracyResult
-                    text: "Accuracy: --"
-                    color: "#2e7d32"
-                    font.bold: true
-                }
-                Label {
-                    id: precisionResult
-                    text: "Precision: --"
-                }
-                Label {
-                    id: recallResult
-                    text: "Recall: --"
-                }
-                Label {
-                    id: f1Result
-                    text: "F1 Score: --"
-                }
+                    Label { text: "Model Type:" }
+                    ComboBox {
+                        id: modelType
+                        Layout.preferredWidth: parent.width * 0.7
+                        model: ["MobileNetV3-Small (fastest)",
+                            "MobileNetV3-Large (more accurate)",
+                            "SSDLite-MobileNetV3 (for detection)"]
+                        currentIndex: 0
+                    }
 
-                Button {
-                    text: "Export Model"
-                    Layout.alignment: Qt.AlignHCenter
-                    onClicked: {
-                        // Handle model export
-                        console.log("Export model clicked")
+                    Label { text: "Epochs:" }
+                    SpinBox {
+                        id: epochs
+                        from: 1
+                        to: 100
+                        value: ModelTrainer ? ModelTrainer.epoch : 15
+
+                        onValueChanged: {
+                            if (ModelTrainer) {
+                                ModelTrainer.setEpoch(value)
+                            }
+                        }
+                    }
+
+                    Label { text: "Batch Size:" }
+                    SpinBox {
+                        id: batchSize
+                        from: 1
+                        to: 128
+                        value: ModelTrainer ? ModelTrainer.batchSize : 8
+
+                        onValueChanged: {
+                            if (ModelTrainer) {
+                                ModelTrainer.setBatchSize(value)
+                            }
+                        }
+                    }
+
+                    Label { text: "Learning Rate:" }
+                    TextField {
+                        id: lr
+                        text: ModelTrainer ? ModelTrainer.learningRate : "0.0001"
+                        validator: DoubleValidator { bottom: 0.000001 }
+
+                        onTextChanged: {
+                            if (ModelTrainer) {
+                                ModelTrainer.setLearningRate(parseFloat(text))
+                            }
+                        }
+                    }
+
+                    Label { text: "Train/Test Split:" }
+                    Slider {
+                        id: split
+                        from: 0.5
+                        to: 0.95
+                        value: ModelTrainer ? ModelTrainer.trainTestSplit / 100 : 0.8
+
+                        onValueChanged: {
+                            if (ModelTrainer) {
+                                ModelTrainer.setTrainTestSplit(Math.round(value * 100))
+                            }
+                        }
+                    }
+
+                    Label {
+                        text: Math.round(split.value * 100) + "% train"
+                    }
+                }
+            }
+
+            // ================= PROGRESS & STATUS =================
+            GroupBox {
+                title: "3. Training Status"
+                Layout.fillWidth: true
+
+                ColumnLayout {
+                    width: parent.width
+                    spacing: 5
+
+                    RowLayout {
+                        Layout.preferredWidth: parent.width
+                        spacing: 2
+
+                        ProgressBar {
+                            id: progressBar
+                            Layout.fillWidth: true
+                            from: 0
+                            to: 100
+                            value: progressValue
+                            visible: training
+
+                            BusyIndicator {
+                                width: 20
+                                height: width
+                                anchors.centerIn: parent
+                                visible: training
+                                running: training
+                                z: 10
+                            }
+                        }
+
+                        Label {
+                            id: percentage
+                            text: progressBar.value + "%"
+                            color: "green"
+                            visible: training
+                            font.bold: true
+                        }
+                    }
+
+                    // Status message (same pattern as Transform page)
+                    Label {
+                        id: statusLabel
+                        text: statusMessage
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        elide: Text.ElideRight
+                        maximumLineCount: 2
+
+                        color: {
+                            if (statusMessage.includes("Error") || statusMessage.includes("failed")) return "red"
+                            if (statusMessage.includes("Success") || statusMessage.includes("completed")) return "green"
+                            if (training) return "blue"
+                            return "black"
+                        }
+                    }
+
+                    // Metrics display
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: training || currentLoss > 0 || currentAccuracy > 0
+
+                        Label {
+                            text: "Loss: " + (currentLoss ? currentLoss.toFixed(4) : "--")
+                            color: "#555"
+                            font.italic: true
+                        }
+
+                        Label {
+                            text: "Accuracy: " + (currentAccuracy ? (currentAccuracy * 100).toFixed(1) + "%" : "--")
+                            color: "#555"
+                            font.italic: true
+                        }
+                    }
+
+                    // Info labels
+                    Label {
+                        text: "Dataset: " + (datasetPath ? (datasetPath.length > 40 ? "..." + datasetPath.substring(datasetPath.length - 40) : datasetPath) : "Not set")
+                        visible: datasetPath !== ""
+                        font.italic: true
+                        color: "#555"
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+
+                    Label {
+                        text: "Model: " + (modelType.currentText.split(" ")[0] || "Not selected")
+                        font.italic: true
+                        color: "#555"
+                    }
+                }
+            }
+
+            // ================= TRAIN CONTROL =================
+            GroupBox {
+                title: "4. Training Control"
+                Layout.fillWidth: true
+
+                RowLayout {
+                    spacing: 12
+
+                    Button {
+                        text: training ? "Stop Training" : "Start Training"
+                        enabled: !training ? csvPath.text.length > 0 : true
+                        highlighted: !training
+
+                        onClicked: {
+                            if (ModelTrainer) {
+                                if (training) {
+                                    ModelTrainer.stopTraining()
+                                } else {
+                                    ModelTrainer.setDatasetPath(csvPath.text)
+                                    ModelTrainer.startTraining(modelType.currentText)
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        text: "Pause"
+                        enabled: training
+                        visible: training
+
+                        onClicked: {
+                            if (ModelTrainer) {
+                                ModelTrainer.pauseTraining()
+                            }
+                        }
+                    }
+
+                    Button {
+                        text: "Resume"
+                        enabled: training
+                        visible: training
+
+                        onClicked: {
+                            if (ModelTrainer) {
+                                ModelTrainer.resumeTraining()
+                            }
+                        }
+                    }
+
+                    Button {
+                        text: "Clear"
+                        onClicked: {
+                            csvPath.text = ""
+                            modelType.currentIndex = 0
+                            epochs.value = 15
+                            batchSize.value = 8
+                            lr.text = "0.0001"
+                            split.value = 0.8
+                            statusMessage = "Ready to train model"
+                            progressValue = 0
+
+                            if (training && ModelTrainer) {
+                                ModelTrainer.stopTraining()
+                            }
+                        }
+                    }
+
+                    Button {
+                        text: "Open Dataset Folder"
+                        onClicked: {
+                            if (datasetPath) {
+                                var folder = datasetPath.substring(0, datasetPath.lastIndexOf("/"))
+                                Qt.openUrlExternally("file:///" + folder)
+                            }
+                        }
+                        enabled: datasetPath !== ""
+                    }
+                }
+            }
+
+            // ================= RESULTS =================
+            GroupBox {
+                id: resultsBox
+                title: "5. Results"
+                Layout.fillWidth: true
+                visible: !training && progressValue >= 100
+
+                ColumnLayout {
+                    spacing: 6
+
+                    Label {
+                        id: accuracyResult
+                        text: "Accuracy: --"
+                        color: "#2e7d32"
+                        font.bold: true
+                    }
+                    Label {
+                        id: precisionResult
+                        text: "Precision: --"
+                    }
+                    Label {
+                        id: recallResult
+                        text: "Recall: --"
+                    }
+                    Label {
+                        id: f1Result
+                        text: "F1 Score: --"
+                    }
+
+                    // Model info display
+                    Label {
+                        id: modelInfoLabel
+                        text: ModelTrainer ? ModelTrainer.trainedModelInfo : ""
+                        visible: text !== ""
+                        color: "#555"
+                        font.italic: true
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    RowLayout {
+                        spacing: 10
+                        Layout.alignment: Qt.AlignHCenter
+
+                        Button {
+                            text: "Export Model"
+                            enabled: ModelTrainer ? ModelTrainer.trainedModelPath !== "" : false
+                            onClicked: exportDialog.open()
+                        }
+
+                        Button {
+                            text: "Export as ONNX"
+                            enabled: ModelTrainer ? ModelTrainer.trainedModelPath !== "" : false
+                            onClicked: exportOnnxDialog.open()
+                        }
                     }
                 }
             }
@@ -363,6 +394,52 @@ Page {
             csvPath.text = filePath
             if (ModelTrainer) {
                 ModelTrainer.setDatasetPath(filePath)
+            }
+        }
+    }
+
+    FileDialog {
+        id: exportDialog
+        title: "Export Trained Model"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["PyTorch model (*.pth)", "All files (*)"]
+
+        onAccepted: {
+            var filePath = exportDialog.selectedFile.toString()
+            if (filePath.startsWith("file://")) {
+                filePath = filePath.substring(7)
+            }
+
+            // Ensure .pth extension
+            if (!filePath.endsWith('.pth')) {
+                filePath += '.pth'
+            }
+
+            if (ModelTrainer) {
+                ModelTrainer.exportModel(filePath)
+            }
+        }
+    }
+
+    FileDialog {
+        id: exportOnnxDialog
+        title: "Export Model as ONNX"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["ONNX model (*.onnx)"]
+
+        onAccepted: {
+            var filePath = exportOnnxDialog.selectedFile.toString()
+            if (filePath.startsWith("file://")) {
+                filePath = filePath.substring(7)
+            }
+
+            // Ensure .onnx extension
+            if (!filePath.endsWith('.onnx')) {
+                filePath += '.onnx'
+            }
+
+            if (ModelTrainer) {
+                ModelTrainer.exportModel(filePath)
             }
         }
     }
@@ -397,6 +474,10 @@ Page {
 
         function onAccuracyUpdated(accuracy) {
             root.currentAccuracy = accuracy
+        }
+
+        function onTrainedModelPathChanged() {
+            modelInfoLabel.text = ModelTrainer.trainedModelInfo
         }
 
         // Handle training completion

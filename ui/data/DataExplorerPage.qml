@@ -203,13 +203,14 @@ Page {
                     RoundButton {
                         text: "↑"
                         enabled: fileController?.imageCount > 0
-                        onClicked: fileController?.previousImage()
+                        onClicked: fileController?.nextImage()
+
                     }
 
                     RoundButton {
                         text: "↓"
                         enabled: fileController?.imageCount > 0
-                        onClicked: fileController?.nextImage()
+                        onClicked: fileController?.previousImage()
                     }
 
                     Label {

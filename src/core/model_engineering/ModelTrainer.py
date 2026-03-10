@@ -1,6 +1,7 @@
 # This Python file uses the following encoding: utf-8
 import os
-from pathlib import Path  # Add this import
+import json
+from pathlib import Path
 from typing import Optional
 from PySide6 import QtCore
 from PySide6.QtCore import (
@@ -31,8 +32,8 @@ class ModelTrainer(QtCore.QObject):
     lossUpdated = Signal(float)
     accuracyUpdated = Signal(float)
     statusMessageChanged = Signal(str)
-    # Add missing signals
-    outputLocationChanged = Signal(str)  # ← ADDED
+    outputLocationChanged = Signal(str)
+    trainedModelPathChanged = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -46,12 +47,15 @@ class ModelTrainer(QtCore.QObject):
         self._status_message = ""
         self._current_loss = 0.0
         self._current_accuracy = 0.0
-        self._output_location = ""  # ← ADDED
-        self._thread_pool = QThreadPool.globalInstance()  # ← FIXED: Use globalInstance
+        self._output_location = ""
+        self._trained_model_path = None  # Track the last trained model path
+        self._trained_model_info = {}    # Store model info
+        self._class_mapping = None        # Store class mapping
+        self._thread_pool = QThreadPool.globalInstance()
         self._current_task = None
         self._current_model_type = ""
 
-        # Set default output location (like other classes)
+        # Set default output location
         home = str(Path.home())
         self._output_location = os.path.join(home, "Documents", "plantlab", "models")
         os.makedirs(self._output_location, exist_ok=True)
@@ -99,9 +103,23 @@ class ModelTrainer(QtCore.QObject):
     def currentAccuracy(self):
         return self._current_accuracy
 
-    @Property(str, notify=outputLocationChanged)  # ← ADDED
+    @Property(str, notify=outputLocationChanged)
     def outputLocation(self):
         return self._output_location
+
+    @Property(str, notify=trainedModelPathChanged)
+    def trainedModelPath(self):
+        return self._trained_model_path or ""
+
+    @Property(str, notify=trainedModelPathChanged)
+    def trainedModelInfo(self):
+        if not self._trained_model_info:
+            return ""
+        info = self._trained_model_info
+        class_count = len(info.get('class_names', []))
+        accuracy = info.get('accuracy', 0)
+        model_type = info.get('model_type', 'unknown')
+        return f"Model: {model_type}\nClasses: {class_count}\nAccuracy: {accuracy:.1%}"
 
     # ====================================================
     # Property Setters (Internal)
@@ -131,10 +149,52 @@ class ModelTrainer(QtCore.QObject):
             self._current_accuracy = accuracy
             self.accuracyUpdated.emit(accuracy)
 
-    def _setOutputLocation(self, location: str):  # ← ADDED
+    def _setOutputLocation(self, location: str):
         if self._output_location != location:
             self._output_location = location
             self.outputLocationChanged.emit(location)
+
+    def _setTrainedModelPath(self, path: str):
+        if self._trained_model_path != path:
+            self._trained_model_path = path
+            self.trainedModelPathChanged.emit(path or "")
+
+    def _create_class_mapping(self):
+        """Create a mapping from folder names to actual class names"""
+        if not self._dataset_path or not os.path.exists(self._dataset_path):
+            return None
+
+        try:
+            import pandas as pd
+            df = pd.read_csv(self._dataset_path)
+
+            # Extract class names from filenames (first part before -)
+            def extract_class_name(filename):
+                # e.g., "snail-374-_jpg..." -> "snail"
+                return filename.split('-')[0].lower()
+
+            # Create mapping dictionary
+            mapping = {}
+            for folder in df['folder'].unique():
+                # Get first filename in this folder
+                folder_df = df[df['folder'] == folder]
+                if len(folder_df) > 0:
+                    first_file = folder_df.iloc[0]['filename']
+                    actual_class = extract_class_name(first_file)
+                    mapping[folder] = actual_class
+
+            # Save mapping
+            mapping_file = self._dataset_path.replace('.csv', '_mapping.json')
+            with open(mapping_file, 'w') as f:
+                json.dump(mapping, f, indent=2)
+
+            self._setStatusMessage(f"Class mapping created with {len(mapping)} classes")
+            self._class_mapping = mapping
+            return mapping
+
+        except Exception as e:
+            self._setStatusMessage(f"Failed to create class mapping: {str(e)}")
+            return None
 
     # ====================================================
     # Public Slots - Property Setters
@@ -144,6 +204,19 @@ class ModelTrainer(QtCore.QObject):
         if self._dataset_path != datasetPath:
             self._dataset_path = datasetPath
             self.dataSetPathChanged.emit(datasetPath)
+
+            # Try to load existing mapping or create new one
+            mapping_file = datasetPath.replace('.csv', '_mapping.json')
+            if os.path.exists(mapping_file):
+                try:
+                    with open(mapping_file, 'r') as f:
+                        self._class_mapping = json.load(f)
+                    self._setStatusMessage(f"Loaded class mapping with {len(self._class_mapping)} classes")
+                except:
+                    self._class_mapping = self._create_class_mapping()
+            else:
+                self._class_mapping = self._create_class_mapping()
+
             self._setStatusMessage(f"Dataset path set to: {datasetPath}")
 
     @Slot(float)
@@ -175,7 +248,7 @@ class ModelTrainer(QtCore.QObject):
             split_percent = value
             self._setStatusMessage(f"Train/test split set to: {split_percent}% train")
 
-    @Slot(str)  # ← ADDED
+    @Slot(str)
     def setOutputLocation(self, location: str):
         """Set the output directory for trained models"""
         if location.startswith("file://"):
@@ -206,6 +279,14 @@ class ModelTrainer(QtCore.QObject):
             self.trainingCompleted.emit("failed: invalid dataset path")
             return
 
+        # Create class mapping if not exists
+        if not self._class_mapping:
+            self._class_mapping = self._create_class_mapping()
+            if not self._class_mapping:
+                self._setStatusMessage("Failed to create class mapping")
+                self.trainingCompleted.emit("failed: class mapping")
+                return
+
         # Clean up any existing worker
         if self._current_task is not None:
             try:
@@ -233,7 +314,8 @@ class ModelTrainer(QtCore.QObject):
             epochs=int(self._epoch),
             batch_size=int(self._batch_size),
             learning_rate=self._learning_rate,
-            train_test_split=split_ratio
+            train_test_split=split_ratio,
+            class_mapping=self._class_mapping
         )
 
         # Connect signals
@@ -273,6 +355,92 @@ class ModelTrainer(QtCore.QObject):
             self._current_task.cancel()
             self._setStatusMessage("Training stopped by user")
 
+    @Slot(str)
+    def exportModel(self, export_path: str):
+        """Export the trained model to a specified location"""
+        if not self._trained_model_path or not os.path.exists(self._trained_model_path):
+            self._setStatusMessage("No trained model available to export")
+            return
+
+        try:
+            import shutil
+
+            # Create export directory if it doesn't exist
+            export_dir = os.path.dirname(export_path)
+            if export_dir:
+                os.makedirs(export_dir, exist_ok=True)
+
+            # Copy the model file
+            shutil.copy2(self._trained_model_path, export_path)
+
+            # Also save metadata alongside the model
+            metadata_path = export_path.replace('.pth', '_metadata.json')
+            with open(metadata_path, 'w') as f:
+                json.dump(self._trained_model_info, f, indent=2)
+
+            self._setStatusMessage(f"Model exported to: {export_path}")
+
+            # Optionally convert to ONNX for better compatibility
+            if export_path.endswith('.onnx'):
+                self._convert_to_onnx(export_path.replace('.onnx', '.pth'), export_path)
+
+        except Exception as e:
+            self._setStatusMessage(f"Export failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def _convert_to_onnx(self, pytorch_path, onnx_path):
+        """Convert PyTorch model to ONNX format"""
+        try:
+            import torch
+            import torch.onnx
+
+            # Load the checkpoint
+            checkpoint = torch.load(pytorch_path, map_location='cpu')
+
+            # Recreate model architecture
+            from torchvision import models
+            import torch.nn as nn
+
+            num_classes = checkpoint.get('num_classes', len(checkpoint.get('class_names', [])))
+            model_type = checkpoint.get('model_type', 'mobilenetv3_small')
+
+            # Create model based on type
+            if 'small' in model_type:
+                model = models.mobilenet_v3_small(weights=None)
+                in_features = model.classifier[3].in_features
+                model.classifier[3] = nn.Linear(in_features, num_classes)
+            else:
+                model = models.mobilenet_v3_large(weights=None)
+                in_features = model.classifier[3].in_features
+                model.classifier[3] = nn.Linear(in_features, num_classes)
+
+            # Load weights
+            model.load_state_dict(checkpoint['model_state_dict'])
+            model.eval()
+
+            # Create dummy input
+            dummy_input = torch.randn(1, 3, 224, 224)
+
+            # Export to ONNX
+            torch.onnx.export(
+                model,
+                dummy_input,
+                onnx_path,
+                export_params=True,
+                opset_version=11,
+                do_constant_folding=True,
+                input_names=['input'],
+                output_names=['output'],
+                dynamic_axes={'input': {0: 'batch_size'},
+                             'output': {0: 'batch_size'}}
+            )
+
+            self._setStatusMessage(f"ONNX model also saved to: {onnx_path}")
+
+        except Exception as e:
+            self._setStatusMessage(f"ONNX conversion failed: {str(e)}")
+
     # ====================================================
     # Private Slots for Task Signals
     # ====================================================
@@ -283,8 +451,30 @@ class ModelTrainer(QtCore.QObject):
     @Slot(str)
     def _on_training_finished(self, result: str):
         self._setIsTrainingInProgress(False)
-        # Disconnect signals before clearing
+
+        # Store the model path from the task
         if self._current_task:
+            if hasattr(self._current_task, '_final_model_path') and self._current_task._final_model_path:
+                self._setTrainedModelPath(self._current_task._final_model_path)
+            elif hasattr(self._current_task, '_best_model_path') and self._current_task._best_model_path:
+                self._setTrainedModelPath(self._current_task._best_model_path)
+
+            # Store model info
+            if self._trained_model_path and os.path.exists(self._trained_model_path):
+                try:
+                    checkpoint = torch.load(self._trained_model_path, map_location='cpu')
+                    self._trained_model_info = {
+                        'path': self._trained_model_path,
+                        'class_names': checkpoint.get('class_names', []),
+                        'num_classes': checkpoint.get('num_classes', 0),
+                        'accuracy': checkpoint.get('best_accuracy', checkpoint.get('final_accuracy', 0)),
+                        'model_type': checkpoint.get('model_type', 'unknown'),
+                        'hyperparameters': checkpoint.get('hyperparameters', {})
+                    }
+                except Exception as e:
+                    print(f"Failed to load model info: {e}")
+
+            # Disconnect signals
             try:
                 self._current_task.signals.progress.disconnect()
                 self._current_task.signals.finished.disconnect()
@@ -295,6 +485,7 @@ class ModelTrainer(QtCore.QObject):
             except:
                 pass
             self._current_task = None
+
         self.trainingCompleted.emit(result)
         if "success" in result.lower():
             self._setStatusMessage("Training completed successfully!")
