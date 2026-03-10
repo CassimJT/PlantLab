@@ -102,7 +102,7 @@ Page {
                         text: "Browse folder"
                         display: AbstractButton.TextUnderIcon
                         Layout.alignment: Qt.AlignHCenter
-                        onClicked: fileDialog.open()
+                        onClicked: folderDialog.open()
                     }
                 }
             }
@@ -298,20 +298,18 @@ Page {
     // =============================
     // FILE DIALOG
     // =============================
-    FileDialog {
-        id: fileDialog
-        title: "Select folder"
-        fileMode: FileDialog.Folder
+
+    FolderDialog {
+        id: folderDialog
+        title: "Select Folder"
 
         onAccepted: {
-            if (selectedFolder) {
-                let localPath = selectedFolder
+            let localPath = folderDialog.selectedFolder
                 .toString()
-                .replace("file://", "")
+                .replace(/^file:\/\//, "")
 
-                fileController.setRootFolder(localPath)
-                fileView.setFolder(localPath)
-            }
+            fileController.setRootFolder(localPath)
+            fileView.setFolder(localPath)
         }
     }
 

@@ -42,7 +42,7 @@ Rectangle {
         TextArea {
             id: logTextArea
             font.family: "Courier New"
-            font.pixelSize: 11
+            font.pixelSize: 14
             readOnly: true
             wrapMode: TextArea.Wrap
             textFormat: TextEdit.RichText  // Enable rich text
