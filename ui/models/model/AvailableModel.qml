@@ -1,9 +1,30 @@
 import QtQuick 2.15
+import QtQml.Models 2.15
 
-ListModel {
-    ListElement { name: "llama-7b"; framework: "PyTorch"; _size: "50 MB"; accuracy: 87.3; learningRate: 0.0003; epochs: 12; status: "Ready" }
-    ListElement { name: "llama-13b"; framework: "TensorFlow"; _size: "120 MB"; accuracy: 89.1; learningRate: 0.0002; epochs: 15; status: "Training" }
-    ListElement { name: "mistral-7b"; framework: "PyTorch"; _size: "45 MB"; accuracy: 85.6; learningRate: 0.0004; epochs: 10; status: "Ready" }
-    ListElement { name: "falcon-40b"; framework: "JAX"; _size: "320 MB"; accuracy: 91.8; learningRate: 0.0001; epochs: 20; status: "Queued" }
-    ListElement { name: "phi-2"; framework: "ONNX"; _size: "20 MB"; accuracy: 82.4; learningRate: 0.0005; epochs: 8; status: "Ready" }
+Item {
+    id: root
+
+    property var selectedModel: null
+    property int count: ModelList ? ModelList.rowCount() : 0
+
+    function get(index) {
+        if (ModelList && typeof ModelList.get === 'function') {
+            return ModelList.get(index)
+        }
+        console.error("ModelList not available or doesn't have get method")
+        return {}
+    }
+
+    function selectModel(index) {
+        if (index >= 0 && index < count) {
+            selectedModel = get(index)
+        }
+    }
+
+    Component.onCompleted: {
+        console.log("AvailableModel initialized, count:", count)
+        if (count > 0) {
+            selectModel(0)  // Select first model by default
+        }
+    }
 }

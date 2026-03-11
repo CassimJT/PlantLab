@@ -1,0 +1,3 @@
+module plantlab.models
+typeinfo ModelListModel.qmltypes
+typeinfo FileSystemController.qmltypes

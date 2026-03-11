@@ -123,6 +123,7 @@ Page {
                 }
 
                 // Details panel
+                // Details panel
                 GroupBox {
                     visible: library.selectedModel
                     Layout.fillWidth: true
@@ -133,46 +134,39 @@ Page {
                         spacing: 2
                         DetailRow {
                             label: "Framework";
-                            value: library.selectedModel.framework
+                            value: library.selectedModel ? library.selectedModel.framework : "N/A"
                         }
-                        MenuSeparator {
-                            Layout.fillWidth: true
-                        }
+                        MenuSeparator { Layout.fillWidth: true }
 
                         DetailRow {
                             label: "Size";
-                            value: library.selectedModel._size
+                            value: library.selectedModel ? library.selectedModel.size : "N/A"
                         }
-                        MenuSeparator {
-                            Layout.fillWidth: true
-                        }
+                        MenuSeparator { Layout.fillWidth: true }
+
                         DetailRow {
-                            label: "Accuracy"; value:
-                                library.selectedModel.accuracy + "%"
+                            label: "Accuracy";
+                            value: library.selectedModel ? (library.selectedModel.accuracy + "%") : "N/A"
                         }
-                        MenuSeparator {
-                            Layout.fillWidth: true
-                        }
+                        MenuSeparator { Layout.fillWidth: true }
+
                         DetailRow {
                             label: "Learning Rate";
-                            value: library.selectedModel.learningRate
+                            value: library.selectedModel ? library.selectedModel.learningRate : "N/A"
                         }
-                        MenuSeparator {
-                            Layout.fillWidth: true
+                        MenuSeparator { Layout.fillWidth: true }
+
+                        DetailRow {
+                            label: "Epochs";
+                            value: library.selectedModel ? library.selectedModel.epochs : "N/A"
                         }
-                        DetailRow { label: "Epochs"; value: library.selectedModel.epochs
-                        }
-                        MenuSeparator {
-                            Layout.fillWidth: true
-                        }
+                        MenuSeparator { Layout.fillWidth: true }
+
                         DetailRow {
                             label: "Status";
-                            value: library.selectedModel.status
+                            value: library.selectedModel ? library.selectedModel.status : "N/A"
                         }
-                        MenuSeparator {
-                            Layout.fillWidth: true
-                        }
-
+                        MenuSeparator { Layout.fillWidth: true }
                     }
                 }
 

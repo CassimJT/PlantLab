@@ -25,6 +25,8 @@ files = [
 "src/core/model_engineering/ModelConverter.py",
 "src/core/model_engineering/ModelConverterWorker.py",
 "src/core/model_engineering/ModelDownloader.py",
+"src/core/model_engineering/ModelListModel.py",
+"src/core/model_engineering/ModelScanner.py",
 "src/core/model_engineering/ModelTrainer.py",
 "src/core/model_engineering/ModelTrainerWorker.py",
 "src/core/model_engineering/__init__.py",
