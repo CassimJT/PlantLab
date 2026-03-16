@@ -1,0 +1,230 @@
+[
+    {
+        "class_id": 0,
+        "name": "Chilonda cha Apple (Apple Scab)",
+        "description": "Chilonda cha Apple ndi matenda oyamba ndi bowa wotchedwa Venturia inaequalis. Amapanga mabala akuda pamakhumbo, zipatso, ndi nthambi zazing'ono. Matendawa amapezeka m'masamba akugwa nthawi yozizira.",
+        "cure": "Gwiritsani ntchito mitengo yosagwidwa ndi matendawa, dulani nthambi zowonongeka, ndi kupopera mankhwala opha bowa. Onjezerani mpweya wabwino m'munda mwanu."
+    },
+    {
+        "class_id": 1,
+        "name": "Apple Black Rot",
+        "description": "Black Rot pa maapulo amayamba chifukwa cha bowa Botryosphaeria obtusa. Amapanga mabala akuda ozungulira pa zipatso, mabala a mtima pa masamba, ndi zilonda pa nthambi.",
+        "cure": "Chotsani zipatso zouma ndi zilonda podula mitengo. Pulani nthambi zakufa ndi kupopera mankhwala opha bowa nthawi yoyamba ya zipatso."
+    },
+    {
+        "class_id": 2,
+        "name": "Cedar Apple Rust",
+        "description": "Cedar Apple Rust ndi matenda oyamba ndi bowa omwe amafunikira mitengo ya apulo ndi mkungudza. Amapezeka ngati mabala achikasu pa masamba ndi zipatso za apulo.",
+        "cure": "Chotsani mitengo ya mkungudza pafupi ndi minda ya apulo. Gwiritsani ntchito mitengo yosagwidwa ndi matenda ngati Liberty ndi Enterprise."
+    },
+    {
+        "class_id": 3,
+        "name": "Apple Wathanzi",
+        "description": "Mtengo wa apulowu uli wathanzi, masamba ake obiriwira, opanda mabala kapena zilonda. Ukukula bwino ndi mphamvu yabwino.",
+        "cure": "Palibe chithandizo chofunika. Pitilizani kuthirira, kudula nthambi, ndi kuyang'anira tizilombo. Ikani feteleza woyenera nthawi yake."
+    },
+    {
+        "class_id": 4,
+        "name": "Blueberry Wathanzi",
+        "description": "Chomera cha blueberry ichi chili chathanzi, masamba ake obiriwira, opanda mabala kapena kusintha kwa mtundu. Chikukula bwino.",
+        "cure": "Palibe chithandizo chofunika. Onetsetsani kuti nthaka ili ndi asidi woyenera (pH 4.5-5.5) ndi chinyontho chokwanira."
+    },
+    {
+        "class_id": 5,
+        "name": "Cherry Powdery Mildew",
+        "description": "Matendawa amayamba ndi bowa wotchedwa Podosphaera clandestina, amapezeka ngati ufa woyera pa masamba, nthambi, ndi zipatso. Masamba amakwinya ndi kugwa.",
+        "cure": "Dulani mbali zowonongeka kuti mpweya uyende bwino. Gwetsani mankhwala opha bowa okhala ndi sulfa. Chotsani masamba akugwa."
+    },
+    {
+        "class_id": 6,
+        "name": "Cherry Wathanzi",
+        "description": "Mtengo wa Cherry uwu uli wathanzi, masamba ake obiriwira, opanda matenda. Ukukula bwino monga momwe umayenera kukhalira.",
+        "cure": "Palibe chithandizo chofunika. Pitilizani kudula nthambi, kuthirira, ndi kuyang'anira tizilombo ngati nsabwe."
+    },
+    {
+        "class_id": 7,
+        "name": "Corn Gray Leaf Spot",
+        "description": "Matendawa amayamba ndi bowa Cercospora zeae-maydis. Amapezeka ngati mabala ataliatali, otuwa pa masamba. Amachepetsa zokolola.",
+        "cure": "Sinthanitsani mbewu, limani mbewu zosagwidwa ndi matenda. Gwetsani mankhwala opha bowa. Limbikitsani nthaka."
+    },
+    {
+        "class_id": 8,
+        "name": "Corn Common Rust",
+        "description": "Matendawa amayamba ndi bowa Puccinia sorghi. Amapezeka ngati timadontho tating'ono, tofiira pa masamba a chimanga.",
+        "cure": "Limani mbewu zosagwidwa ndi matenda. Gwetsani mankhwala opha bowa akayamba kuoneka. Sinthanitsani mbewu."
+    },
+    {
+        "class_id": 9,
+        "name": "Corn Northern Leaf Blight",
+        "description": "Matendawa amapezeka ngati mabala ataliatali, otuwa pa masamba a chimanga. Amayamba pa masamba akumunsi ndipo amawononga masamba ambiri.",
+        "cure": "Gwiritsani ntchito mbewu zosagwidwa ndi matenda. Sinthanitsani mbewu. Gwetsani mankhwala opha bowa akayamba kuoneka."
+    },
+    {
+        "class_id": 10,
+        "name": "Chimanga Chathanzi",
+        "description": "Chimanga ichi chili chathanzi, masamba ake obiriwira, tsinde liolimba. Palibe mabala kapena tizilombo tooneka.",
+        "cure": "Palibe chithandizo chofunika. Onjezerani feteleza woyenera, onetsetsani chinyontho chokwanira, ndi kuyang'anira tizilombo."
+    },
+    {
+        "class_id": 11,
+        "name": "Grape Black Rot",
+        "description": "Matendawa amayamba ndi bowa Guignardia bidwellii. Amapezeka ngati mabala ozungulira pa masamba, zipatso zimauma ndi kukhala zakuda.",
+        "cure": "Chotsani zipatso zouma ndi nthambi zodwala. Gwetsani mankhwala opha bowa. Onetsetsani mpweya wabwino m'munda."
+    },
+    {
+        "class_id": 12,
+        "name": "Grape Esca",
+        "description": "Esca ndi matenda oyamba ndi bowa amapangitsa masamba kukhala ndi mikwingwirima, zipatso kufota, ndi mtengo kuwola. Amafooketsa mpesa pang'onopang'ono.",
+        "cure": "Palibe mankhwala othandiza. Chotsani mitengo yowonongeka, pewani kuuma kwa nthaka. Dulani nthambi moyenera."
+    },
+    {
+        "class_id": 13,
+        "name": "Grape Leaf Spot",
+        "description": "Matendawa amapezeka ngati mabala akuda pa masamba a mpesa. Amapangitsa masamba kugwa msanga, kuchepetsa zokolola.",
+        "cure": "Onjezerani mpweya m'munda podula nthambi. Gwetsani mankhwala a copper kapena mancozeb. Chotsani masamba akugwa."
+    },
+    {
+        "class_id": 14,
+        "name": "Mpesa Wathanzi",
+        "description": "Mpesa uwu uli wathanzi, masamba ake obiriwira, zipatso zikukula bwino. Palibe mabala kapena matenda.",
+        "cure": "Palibe chithandizo chofunika. Pitilizani kuthirira bwino, kudula nthambi, ndi kuyang'anira tizilombo."
+    },
+    {
+        "class_id": 15,
+        "name": "Citrus Greening",
+        "description": "Matendawa amayamba ndi bakiteriya amafalitsidwa ndi tizilombo toyera. Masamba amakhala achikasu, zipatso zopunduka ndi zowawa. Amapha mitengo ya citrus.",
+        "cure": "Palibe mankhwala. Chotsani mitengo yodwala nthawi yomweyo. Gwetsani mankhwala opha tizilombo toyera. Limani mitengo yabwino."
+    },
+    {
+        "class_id": 16,
+        "name": "Peach Bacterial Spot",
+        "description": "Matendawa amayamba ndi bakiteriya Xanthomonas. Amapezeka ngati mabala akuda pa zipatso, masamba, ndi nthambi. Masamba amakhala ngati aboola.",
+        "cure": "Gwetsani mankhwala a copper. Limani mitengo yosagwidwa ndi matenda. Dulani nthambi kuti mpweya uyende bwino."
+    },
+    {
+        "class_id": 17,
+        "name": "Pichi Wathanzi",
+        "description": "Mtengo wa pichi uwu uli wathanzi, masamba ake obiriwira, zipatso zikukula bwino. Palibe mabala kapena zilonda.",
+        "cure": "Palibe chithandizo chofunika. Pitilizani kudula nthambi, kuthirira, ndi kuyang'anira tizilombo."
+    },
+    {
+        "class_id": 18,
+        "name": "Pepper Bacterial Spot",
+        "description": "Matendawa amapezeka ngati timadontho tating'ono, takuda pa masamba ndi zipatso za tsabola. Masamba amakhala ndi chikasu.",
+        "cure": "Gwiritsani ntchito mbewu zabwino. Gwetsani mankhwala a copper. Sinthanitsani mbewu. Chotsani zomera zodwala."
+    },
+    {
+        "class_id": 19,
+        "name": "Tsabola Wathanzi",
+        "description": "Tsabola uyu ali wathanzi, masamba ake obiriwira, zipatso zikukula bwino. Palibe matenda kapena tizilombo.",
+        "cure": "Palibe chithandizo chofunika. Onetsetsani chinyontho chokwanira, onjezerani feteleza. Yang'anirani nsabwe."
+    },
+    {
+        "class_id": 20,
+        "name": "Potato Early Blight",
+        "description": "Matendawa amayamba ndi bowa Alternaria solani. Amapezeka ngati mabala ozungulira pa masamba akumunsi. Mbatata zimakhala ndi mabala akuda.",
+        "cure": "Chotsani masamba odwala. Sinthanitsani mbewu. Gwetsani mankhwala opha bowa. Pewani kuthirira pamwamba."
+    },
+    {
+        "class_id": 21,
+        "name": "Potato Late Blight",
+        "description": "Matendawa amayamba ndi Phytophthora infestans. Amapezeka ngati mabala a mtundu wa bulauni pa masamba ndi bowa woyera pansi pawo. Izi zidapha mbewu zambiri ku Ireland.",
+        "cure": "Chotsani zomera zodwala nthawi yomweyo. Gwetsani mankhwala opha bowa. Limani mitundu yosagwidwa ndi matenda. Pewani kuthirira pamwamba."
+    },
+    {
+        "class_id": 22,
+        "name": "Mbatata Yathanzi",
+        "description": "Mbatata iyi ili yathanzi, masamba ake obiriwira, mizu ikukula bwino. Palibe mabala kapena tizilombo.",
+        "cure": "Palibe chithandizo chofunika. Pitilizani kulima bwino, onetsetsani chinyontho chokwanira. Sinthanitsani mbewu."
+    },
+    {
+        "class_id": 23,
+        "name": "Raspberry Wathanzi",
+        "description": "Chomera cha Raspberry ichi chili chathanzi, masamba ake obiriwira, opanda mabala. Nthambi zikukula bwino.",
+        "cure": "Palibe chithandizo chofunika. Dulani nthambi zakale, onjezerani chithandizo. Yang'anirani tizilombo."
+    },
+    {
+        "class_id": 24,
+        "name": "Soya Wathanzi",
+        "description": "Soya iyi ili yathanzi, masamba ake obiriwira, amakhala ndi masamba atatu. Palibe mabala kapena matenda.",
+        "cure": "Palibe chithandizo chofunika. Onetsetsani feteleza woyenera ndi chinyontho chokwanira. Yang'anirani nsabwe."
+    },
+    {
+        "class_id": 25,
+        "name": "Squash Powdery Mildew",
+        "description": "Matendawa amapezeka ngati ufa woyera pa masamba a maungu. Masamba amakhala achikasu ndi kufa msanga, kuchepetsa zokolola.",
+        "cure": "Gwiritsani ntchito mitundu yosagwidwa ndi matenda. Gwetsani sulfa. Onjezerani mpweya m'munda. Chotsani masamba odwala."
+    },
+    {
+        "class_id": 26,
+        "name": "Strawberry Leaf Scorch",
+        "description": "Matendawa amayamba ndi bowa Diplocarpon earlianum. Amapezeka ngati mabala ofiira pa masamba a sitiroberi. Masamba amawoneka ngati opsyezedwa.",
+        "cure": "Chotsani masamba odwala. Gwetsani mankhwala a copper. Onjezerani mpweya m'munda. Gwiritsani ntchito madzi pansi."
+    },
+    {
+        "class_id": 27,
+        "name": "Sitiroberi Yathanzi",
+        "description": "Sitiroberi iyi ili yathanzi, masamba ake obiriwira, mizu yabwino, zipatso zikukula bwino. Palibe mabala.",
+        "cure": "Palibe chithandizo chofunika. Pewani kunyowetsa masamba, ikani manyowa. Sinthanitsani mbewu zaka 3-4 zilizonse."
+    },
+    {
+        "class_id": 28,
+        "name": "Tomato Bacterial Spot",
+        "description": "Matendawa amapezeka ngati timadontho tating'ono, tosamveka pa masamba ndi zipatso za matimati. Masamba amakhala ndi chikasu.",
+        "cure": "Gwetsani mankhwala a copper. Gwiritsani ntchito mbewu zabwino. Sinthanitsani mbewu. Pewani kugwira zomera zonyowa."
+    },
+    {
+        "class_id": 29,
+        "name": "Tomato Early Blight",
+        "description": "Matendawa amayamba ndi Alternaria solani. Amapezeka ngati mabala ozungulira pa masamba akale. Masamba amakhala achikasu ndi kugwa.",
+        "cure": "Chotsani masamba odwala. Gwetsani mankhwala opha bowa. Sinthanitsani mbewu. Ikani zothandizira kuti mpweya uyende bwino."
+    },
+    {
+        "class_id": 30,
+        "name": "Tomato Late Blight",
+        "description": "Matendawa amayamba ndi Phytophthora infestans. Amapezeka ngati mabala akuda pa masamba ndi zipatso. Amatha kuwononga mbewu m'masiku ochepa.",
+        "cure": "Chotsani zomera zodwala nthawi yomweyo. Gwetsani mankhwala a copper. Pewani kuthirira pamwamba. Onjezerani mpweya."
+    },
+    {
+        "class_id": 31,
+        "name": "Tomato Leaf Mold",
+        "description": "Matendawa amayamba ndi Fulvia fulva. Amapezeka ngati madontho achikasu pa masamba ndi bowa wotuwa pansi pawo. Masamba amafota.",
+        "cure": "Chepetsani chinyontho. Gwiritsani ntchito mitundu yosagwidwa ndi matenda. Chotsani masamba odwala. Pewani kuthirira pamwamba."
+    },
+    {
+        "class_id": 32,
+        "name": "Tomato Septoria Leaf Spot",
+        "description": "Matendawa amapezeka ngati timadontho tating'ono, tozungulira ndi malire akuda pa masamba akumunsi. Amatha kuwononga masamba ambiri.",
+        "cure": "Dulani masamba odwala. Gwetsani mankhwala opha bowa. Sinthanitsani mbewu. Pewani kugwira zomera zonyowa."
+    },
+    {
+        "class_id": 33,
+        "name": "Tomato Spider Mites",
+        "description": "Tizilombo tating'onoting'ono timapangitsa masamba kukhala ndi timadontho tachikasu. Timapanga utatane pansi pa masamba. Zomera zimafota.",
+        "cure": "Gwetsani mafuta a neem kapena sopo wophera tizilombo. Onjezerani chinyontho. Gwiritsani ntchito tizilombo topha izi."
+    },
+    {
+        "class_id": 34,
+        "name": "Tomato Target Spot",
+        "description": "Matendawa amapezeka ngati mabala akuda ozungulira ndi mikwingwirima pa masamba, nthambi, ndi zipatso za matimati.",
+        "cure": "Gwetsani mankhwala opha bowa. Onjezerani mpweya m'munda. Sinthanitsani mbewu. Pewani kuthirira pamwamba."
+    },
+    {
+        "class_id": 35,
+        "name": "Tomato Yellow Leaf Curl Virus",
+        "description": "Matendawa amafalitsidwa ndi tizilombo toyera. Masamba amakwinya ndi kukhala achikasu. Zomera zimakhala zazing'ono, zipatso zochepa.",
+        "cure": "Gwetsani mankhwala opha tizilombo toyera. Gwiritsani ntchito mitundu yosagwidwa ndi matenda. Chotsani zomera zodwala. Palibe mankhwala."
+    },
+    {
+        "class_id": 36,
+        "name": "Tomato Mosaic Virus",
+        "description": "Matendawa amapangitsa masamba kukhala ndi mawonekedwe obiriwira mosiyanasiyana, kupindika, ndi kukula pang'ono. Zipatso zimakhala zazing'ono.",
+        "cure": "Chotsani zomera zodwala. Tsechanitsani zida ndi bleach. Gwiritsani ntchito mitundu yosagwidwa ndi matenda. Sambani manja."
+    },
+    {
+        "class_id": 37,
+        "name": "Matimati Wathanzi",
+        "description": "Matimati awa ali athanzi, masamba ake obiriwira, zipatso zikukula bwino. Palibe mabala, chikasu, kapena tizilombo.",
+        "cure": "Palibe chithandizo chofunika. Pitilizani kuthirira bwino, ikani zothandizira. Yang'anirani tizilombo. Sinthanitsani mbewu."
+    }
+]

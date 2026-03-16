@@ -357,32 +357,48 @@ class ModelTrainer(QtCore.QObject):
 
     @Slot(str)
     def exportModel(self, export_path: str):
-        """Export the trained model to a specified location"""
+        """Export the trained model to a specified location with ALL metadata"""
         if not self._trained_model_path or not os.path.exists(self._trained_model_path):
             self._setStatusMessage("No trained model available to export")
             return
 
         try:
             import shutil
+            import torch
 
             # Create export directory if it doesn't exist
             export_dir = os.path.dirname(export_path)
             if export_dir:
                 os.makedirs(export_dir, exist_ok=True)
 
-            # Copy the model file
-            shutil.copy2(self._trained_model_path, export_path)
+            # Load the full checkpoint with all metadata
+            checkpoint = torch.load(self._trained_model_path, map_location='cpu')
 
-            # Also save metadata alongside the model
-            metadata_path = export_path.replace('.pth', '_metadata.json')
+            # Save the complete model with all metadata
+            torch.save(checkpoint, export_path)
+
+            # Also save a human-readable metadata JSON
+            metadata_path = export_path.replace('.pth', '_metadata_readable.json')
+            readable_metadata = {
+                'class_names': checkpoint.get('class_names', []),
+                'num_classes': checkpoint.get('num_classes', 0),
+                'model_type': checkpoint.get('model_type', 'unknown'),
+                'final_accuracy': checkpoint.get('final_accuracy', 0),
+                'best_accuracy': checkpoint.get('best_accuracy', 0),
+                'hyperparameters': checkpoint.get('hyperparameters', {}),
+                'dataset_info': checkpoint.get('dataset_info', {}),
+                'timestamp': checkpoint.get('timestamp', 0),
+                'training_history_summary': {
+                    'final_epoch': len(checkpoint.get('training_history', [])),
+                    'best_accuracy': checkpoint.get('best_accuracy', 0)
+                }
+            }
+
             with open(metadata_path, 'w') as f:
-                json.dump(self._trained_model_info, f, indent=2)
+                json.dump(readable_metadata, f, indent=2)
 
             self._setStatusMessage(f"Model exported to: {export_path}")
-
-            # Optionally convert to ONNX for better compatibility
-            if export_path.endswith('.onnx'):
-                self._convert_to_onnx(export_path.replace('.onnx', '.pth'), export_path)
+            self._setStatusMessage(f"Metadata exported to: {metadata_path}")
 
         except Exception as e:
             self._setStatusMessage(f"Export failed: {str(e)}")

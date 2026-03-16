@@ -29,5 +29,7 @@
         <file>assets/analysis/icons8-delete-48.svg</file>
         <file>assets/analysis/icons8-csv-50.svg</file>
         <file>assets/devices/close.png</file>
+        <file>assets/languages/diseases_ny.json</file>
+        <file>assets/languages/diseases_en.json</file>
     </qresource>
 </RCC>

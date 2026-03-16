@@ -145,6 +145,7 @@ class ModelScanner(QObject):
             '.pkl': 'Pickle',
             '.joblib': 'Scikit-learn',
             '.sav': 'Scikit-learn',
+            '.pte': 'Executorch',
         }
 
         if ext in framework_map:
