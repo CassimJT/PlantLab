@@ -1,5 +1,6 @@
 # frameworks/executorch_framework.py
 import numpy as np
+import warnings
 from .base import BaseFramework, FrameworkFactory
 
 class ExecuTorchFramework(BaseFramework):
@@ -11,6 +12,20 @@ class ExecuTorchFramework(BaseFramework):
         if model_path:
             self.load_model(model_path)
 
+    @classmethod
+    def is_available(cls) -> bool:
+        try:
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                import executorch
+                return True
+        except ImportError:
+            return False
+        except Exception as e:
+            print(f"Unexpected error checking ExecuTorch: {e}")
+            return False
+
     def load_model(self, model_path: str) -> bool:
         try:
             # Import ExecuTorch
@@ -20,18 +35,8 @@ class ExecuTorchFramework(BaseFramework):
             self.module = Module(model_path)
             print(f"ExecuTorch model loaded")
             return True
-        except ImportError:
-            print("ExecuTorch not available")
-            return False
         except Exception as e:
             print(f"Failed to load ExecuTorch model: {e}")
-            return False
-
-    def is_available(self) -> bool:
-        try:
-            import executorch
-            return True
-        except ImportError:
             return False
 
     def preprocess(self, image: np.ndarray, input_size: int = 224):
@@ -59,7 +64,6 @@ class ExecuTorchFramework(BaseFramework):
 
     def run_inference(self, input_tensor):
         # Convert to appropriate format for ExecuTorch
-        # This is a simplified version - actual implementation depends on ExecuTorch API
         import torch
         import executorch
 

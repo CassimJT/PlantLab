@@ -1,0 +1,74 @@
+[
+    {
+        "class_id": 0,
+        "name": "Ants",
+        "description": "Ants are social insects that can damage plants by farming aphids for honeydew, protecting pests from predators, and building nests in plant roots. Some species directly feed on plant tissues.",
+        "cure": "Use baits and barriers, apply diatomaceous earth around plants, control aphid populations to remove food source, or use insecticidal soaps for severe infestations."
+    },
+    {
+        "class_id": 1,
+        "name": "Bees",
+        "description": "While bees are essential pollinators, some species like leafcutter bees can damage plants by cutting circular pieces from leaves to build their nests. This rarely kills plants but can reduce photosynthesis.",
+        "cure": "Generally, no treatment needed as they are beneficial. If damage is severe, use physical barriers like netting during peak activity, or provide alternative nesting sites."
+    },
+    {
+        "class_id": 2,
+        "name": "Beetles",
+        "description": "Beetles can cause significant damage by chewing leaves, flowers, and fruits. Larvae often feed on roots, while adults attack foliage. Common types include Japanese beetles, Colorado potato beetles, and cucumber beetles.",
+        "cure": "Handpick adults, use row covers, apply neem oil or insecticidal soap, introduce beneficial nematodes for larvae, or use targeted pesticides for severe infestations."
+    },
+    {
+        "class_id": 3,
+        "name": "Caterpillars",
+        "description": "Caterpillars are the larval stage of moths and butterflies. They cause damage by chewing large holes in leaves, boring into fruits, and can defoliate plants quickly. Common pests include cabbage worms, tomato hornworms, and cutworms.",
+        "cure": "Handpick caterpillars, use Bt (Bacillus thuringiensis) as a biological control, apply neem oil, use row covers, or encourage natural predators like birds and parasitic wasps."
+    },
+    {
+        "class_id": 4,
+        "name": "Earthworms",
+        "description": "Earthworms are generally beneficial as they aerate soil and improve nutrient cycling. However, their castings can create uneven surfaces in lawns, and they may attract moles and other predators.",
+        "cure": "No treatment needed - they are beneficial. If casting is problematic in lawns, collect and use as fertilizer, or improve drainage to reduce surface activity."
+    },
+    {
+        "class_id": 5,
+        "name": "Earwigs",
+        "description": "Earwigs are nocturnal insects that feed on decaying matter but can damage seedlings, soft fruits, and flowers. They hide in dark, moist places during the day and can cause ragged holes in leaves.",
+        "cure": "Use rolled-up newspaper or cardboard traps, apply diatomaceous earth, reduce moisture and hiding places, or use insecticidal sprays for severe infestations."
+    },
+    {
+        "class_id": 6,
+        "name": "Grasshoppers",
+        "description": "Grasshoppers are chewing insects that can consume large amounts of foliage, especially during outbreaks. They feed on leaves, stems, and seeds, causing significant crop damage in agricultural areas.",
+        "cure": "Use floating row covers, apply neem oil or garlic spray, encourage natural predators like birds and spiders, or use baits containing Nosema locustae for biological control."
+    },
+    {
+        "class_id": 7,
+        "name": "Moths",
+        "description": "Adult moths are generally harmless, but their caterpillar larvae can cause extensive damage to plants. Some species like codling moths and diamondback moths are major agricultural pests.",
+        "cure": "Use pheromone traps to monitor populations, apply Bt for larvae, use row covers, practice crop rotation, or introduce parasitic wasps for biological control."
+    },
+    {
+        "class_id": 8,
+        "name": "Slugs",
+        "description": "Slugs are mollusks that thrive in moist conditions. They create irregular holes in leaves, eat seedlings, and leave silvery slime trails. They can decimate young plants overnight.",
+        "cure": "Use beer traps, copper tape barriers, diatomaceous earth, encourage natural predators like frogs and birds, reduce moisture, or use iron phosphate baits (safe for pets/wildlife)."
+    },
+    {
+        "class_id": 9,
+        "name": "Snails",
+        "description": "Snails are similar to slugs but carry a shell. They feed on leaves, stems, and fruits, leaving ragged edges and slime trails. They're most active at night and during wet weather.",
+        "cure": "Handpick at night, use copper barriers, apply diatomaceous earth, remove hiding places, use iron phosphate baits, or introduce decollate snails as predators."
+    },
+    {
+        "class_id": 10,
+        "name": "Wasps",
+        "description": "Most wasps are beneficial predators that control other pests. However, some species like fig wasps can damage fruits, and their presence near plants can be problematic for harvest.",
+        "cure": "Generally, no treatment needed as they're beneficial. For problem species, use traps, remove nests carefully, or apply protective netting during fruit ripening."
+    },
+    {
+        "class_id": 11,
+        "name": "Weevils",
+        "description": "Weevils are small beetles with distinctive snouts. They damage plants by chewing leaves, stems, and roots. Larvae often feed internally on plant tissues, causing wilting and dieback.",
+        "cure": "Use sticky traps on tree trunks, apply beneficial nematodes for larvae, remove and destroy infested plant parts, use row covers, or apply targeted insecticides."
+    }
+]

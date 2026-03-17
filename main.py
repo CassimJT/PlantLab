@@ -79,9 +79,6 @@ if __name__ == "__main__":
     # Create InfarenceRunner instance
     infarence_runner = InfarenceRunner()
 
-    # Connect language changes from manager to runner (optional - runner already connects internally)
-    # disease_info_manager.language_changed.connect(infarence_runner._on_language_changed)
-
     # Get available frameworks for UI
     available_frameworks = infarence_runner.available_frameworks
     print(f"Available ML frameworks: {available_frameworks}")

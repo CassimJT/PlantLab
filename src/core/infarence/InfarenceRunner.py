@@ -3,8 +3,9 @@ import os
 from PySide6.QtCore import QObject, Signal, Slot, Property, QThreadPool
 from PySide6.QtCore import QUrl, QStandardPaths
 
-from .DiseaseInfoManager import DiseaseInfoManager
+from .DiseaseInfoManager import DiseaseInfoManager, InfoCategory
 from .InfarenceRunnerWorker import InfarenceRunnerTask, InfarenceRunnerSignals
+
 
 class InfarenceRunner(QObject):
     """Main runner class that manages the QRunnable worker"""
@@ -30,6 +31,7 @@ class InfarenceRunner(QObject):
     language_changed = Signal(str)
     framework_changed = Signal(str)
     available_frameworks_changed = Signal(list)
+    category_changed = Signal(str)  # New signal for category
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -45,6 +47,7 @@ class InfarenceRunner(QObject):
         self._current_framework = "pytorch"
         self._available_frameworks = []
         self._model_path = None
+        self._current_category = "disease"  # New property: "disease" or "pest"
 
         # Get DiseaseInfoManager instance
         self._info_manager = DiseaseInfoManager.instance()
@@ -100,6 +103,10 @@ class InfarenceRunner(QObject):
     def available_frameworks(self):
         return self._available_frameworks
 
+    @Property(str, notify=category_changed)  # New property
+    def current_category(self):
+        return self._current_category
+
     # ============================================
     # Private setters
     # ============================================
@@ -129,6 +136,13 @@ class InfarenceRunner(QObject):
             self._class_index = value
             self.class_index_changed.emit()
 
+    def _set_current_category(self, value):
+        """Set current category (disease/pest)"""
+        if self._current_category != value:
+            self._current_category = value
+            self.category_changed.emit(value)
+            print(f"Category set to: {value}")
+
     def _clear_results(self):
         """Clear current results"""
         self._set_disease_name("")
@@ -143,18 +157,42 @@ class InfarenceRunner(QObject):
 
     def _detect_frameworks(self):
         """Create a task to detect available frameworks"""
-        task = InfarenceRunnerTask()
-        task.signals.frameworks_detected.connect(self._on_frameworks_detected)
-        task.signals.status_message.connect(self.status_message)
+        print("\n=== Starting Framework Detection ===")
 
-        # Run detection (quick task)
-        self.thread_pool.start(task)
+        # Import here to avoid circular imports
+        from .frameworks import FrameworkFactory
 
-    def _on_frameworks_detected(self, frameworks):
-        """Handle detected frameworks"""
-        self._available_frameworks = frameworks
-        self.available_frameworks_changed.emit(frameworks)
-        print(f"Available frameworks: {frameworks}")
+        # Get all registered frameworks
+        all_frameworks = list(FrameworkFactory._frameworks.keys())
+        print(f"Registered frameworks: {all_frameworks}")
+
+        # Test each framework directly
+        available = []
+        main_frameworks = []
+
+        for fw_name in all_frameworks:
+            try:
+                framework_class = FrameworkFactory._frameworks.get(fw_name)
+                if framework_class:
+                    print(f"Checking {fw_name}...")
+                    is_avail = framework_class.is_available()
+                    print(f"  → {fw_name} available: {is_avail}")
+                    if is_avail:
+                        available.append(fw_name)
+                        # Collect main framework names
+                        if fw_name in ['pytorch', 'tensorflow', 'opencv', 'executorch']:
+                            if fw_name not in main_frameworks:
+                                main_frameworks.append(fw_name)
+            except Exception as e:
+                print(f"  → {fw_name} error: {e}")
+
+        print(f"All detected frameworks: {available}")
+        print(f"Main frameworks: {main_frameworks}")
+        print("=== End Detection ===\n")
+
+        self._available_frameworks = main_frameworks  # Store only main names
+        self.available_frameworks_changed.emit(main_frameworks)
+        self.frameworks_detected.emit(available)  # Emit all for debugging
 
     # ============================================
     # Public methods
@@ -185,6 +223,16 @@ class InfarenceRunner(QObject):
             # Reload model with new framework if model is loaded
             if self._model_path and self._is_model_loaded:
                 self.load_model(self._model_path)
+
+    @Slot(str)  # New slot
+    def set_category(self, category):
+        """Set the category (disease or pest)"""
+        category = category.lower()
+        if category in ["disease", "pest"]:
+            self._set_current_category(category)
+            # Refresh current results if any
+            if self._class_index >= 0:
+                self._update_disease_info(self._class_index)
 
     @Slot()
     @Slot(str)
@@ -219,24 +267,52 @@ class InfarenceRunner(QObject):
         """Find model file in standard locations"""
         search_paths = []
 
-        # App data directory
+        # Get project root
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(current_dir, "../../.."))
+
+        # Get user's home directory
+        home_dir = os.path.expanduser("~")
+
+        # ===== ADD THIS =====
+        # 1. Your Documents/plantlab/models directory (highest priority)
+        documents_models = os.path.join(home_dir, "Documents", "plantlab", "models")
+        search_paths.append(os.path.join(documents_models, "model.pt"))
+        search_paths.append(os.path.join(documents_models, "model.pte"))
+        search_paths.append(os.path.join(documents_models, "model.tflite"))
+        search_paths.append(os.path.join(documents_models, "model.onnx"))
+        search_paths.append(os.path.join(documents_models, "best.pt"))  # Common training output
+        search_paths.append(os.path.join(documents_models, "last.pt"))   # Common training output
+
+        # 2. Plantlab project models directory
+        models_dir = os.path.join(project_root, "plantlab", "models")
+        search_paths.append(os.path.join(models_dir, "model.pt"))
+        search_paths.append(os.path.join(models_dir, "model.pte"))
+        search_paths.append(os.path.join(models_dir, "model.tflite"))
+        search_paths.append(os.path.join(models_dir, "model.onnx"))
+
+        # 3. App data directory
         app_data = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
         search_paths.append(os.path.join(app_data, "model.pt"))
         search_paths.append(os.path.join(app_data, "model.pte"))
         search_paths.append(os.path.join(app_data, "model.tflite"))
 
-        # Application directory
-        app_dir = os.path.dirname(os.path.abspath(__file__))
-        search_paths.append(os.path.join(app_dir, "model.pt"))
-        search_paths.append(os.path.join(app_dir, "model.pte"))
+        # 4. Infarence directory
+        search_paths.append(os.path.join(current_dir, "model.pt"))
+        search_paths.append(os.path.join(current_dir, "model.pte"))
 
-        # Resources directory
-        search_paths.append(os.path.join(app_dir, "..", "resources", "model.pt"))
+        # 5. Resources directory
+        search_paths.append(os.path.join(current_dir, "..", "resources", "model.pt"))
 
+        print("\n=== Searching for model in these locations ===")
         for path in search_paths:
+            exists = "✓" if os.path.exists(path) else "✗"
+            print(f"{exists} {path}")
             if os.path.exists(path):
+                print(f"Model found at: {path}")
                 return path
 
+        print("No model file found in any location")
         return None
 
     def _on_model_load_finished(self, framework_name, success):
@@ -248,9 +324,9 @@ class InfarenceRunner(QObject):
         self.model_load_finished.emit(framework_name, success)
 
         if success:
-            print(f"✅ Model loaded with {framework_name}")
+            print(f"Model loaded with {framework_name}")
         else:
-            print(f"❌ Failed to load model with {framework_name}")
+            print(f"Failed to load model with {framework_name}")
 
     def _on_model_load_failed(self, error, framework_name):
         """Handle model load failed"""
@@ -281,7 +357,7 @@ class InfarenceRunner(QObject):
         # Set framework (use current)
         task.framework_name = self._current_framework
         task.is_model_loaded = True
-        task.framework = None  # Will be loaded from model path?
+        task.framework = None
 
         # Start inference in thread pool
         task.classify_image(image_source)
@@ -300,7 +376,7 @@ class InfarenceRunner(QObject):
         self._set_confidence(confidence)
         self._set_class_index(class_id)
 
-        # Get disease info from manager
+        # Get disease/pest info from manager based on current category
         self._update_disease_info(class_id)
 
         print(f"Inference completed using {framework_name}")
@@ -312,8 +388,12 @@ class InfarenceRunner(QObject):
         self.inference_failed.emit(error)
 
     def _update_disease_info(self, class_id):
-        """Update disease info from manager"""
-        info = self._info_manager.get_disease_info(class_id)
+        """Update disease/pest info from manager based on current category"""
+        if self._current_category == "disease":
+            info = self._info_manager.get_disease_info(class_id)
+        else:
+            info = self._info_manager.get_pest_info(class_id)
+
         self._set_disease_name(info.name)
         self._set_description(info.description)
         self._set_cure(info.cure)
@@ -336,6 +416,15 @@ class InfarenceRunner(QObject):
     def current_language(self):
         """Get current language"""
         return self._info_manager.current_language()
+
+    # Category management
+    def available_categories(self):
+        """Get list of available categories"""
+        return ["disease", "pest"]
+
+    def get_category_stats(self):
+        """Get statistics about loaded categories"""
+        return self._info_manager.get_category_stats()
 
     # Thread pool management
     def active_thread_count(self):

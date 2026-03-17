@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 
 Rectangle {
     id: root
-    //propeties
+    //properties
     property string title
     property string value
     property string icon
@@ -12,49 +12,41 @@ Rectangle {
     property color border_color: "#bae6fd"
     property color cardColor: "#ffffff"
     property real cardWidth: 200
-    property real cardHight: 200
+    property real cardHeight: 200
     property real cardRadius: 14
 
-    //defalt values
+    //default values
     width: root.cardWidth
-    height: root.cardHight
+    height: root.cardHeight
     color: root.cardColor
     radius: root.cardRadius
     border.color: root.border_color
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.margins: 8
         spacing: 6
 
         RowLayout {
             Layout.fillWidth: true
-
-            Text {
-                text: root.icon
-                font.pixelSize: 20
-            }
+            Layout.preferredHeight: 20
 
             Text {
                 text: root.title
                 font.pixelSize: 14
                 font.bold: true
                 color: "#334155"
+                Layout.fillWidth: true
+                elide: Text.ElideRight
             }
 
-            Item { Layout.fillWidth: true }
-
-            Text {
-                text: root.value
-                font.pixelSize: 16
-                font.bold: true
-                color: "#0284c7"
-            }
         }
 
         Loader {
             id: contentLoader
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.preferredWidth: parent.width * 0.35
+            Layout.preferredHeight: parent.width * 0.35
+            Layout.alignment: Qt.AlignCenter
         }
     }
 }

@@ -31,9 +31,11 @@ class BaseFramework(ABC):
         """Return framework name"""
         pass
 
-    def is_available(self) -> bool:
-        """Check if framework is available"""
-        return True
+    @classmethod
+    @abstractmethod
+    def is_available(cls) -> bool:
+        """Check if framework is available (class method)"""
+        pass
 
 class FrameworkFactory:
     """Factory for creating framework instances"""
@@ -50,7 +52,11 @@ class FrameworkFactory:
         """Create framework instance"""
         framework_class = cls._frameworks.get(name.lower())
         if framework_class:
-            return framework_class(**kwargs)
+            try:
+                return framework_class(**kwargs)
+            except Exception as e:
+                print(f"Error creating framework {name}: {e}")
+                return None
         return None
 
     @classmethod
@@ -59,10 +65,9 @@ class FrameworkFactory:
         available = []
         for name, framework_class in cls._frameworks.items():
             try:
-                # Try to create instance to check availability
-                framework = framework_class()
-                if framework.is_available():
+                # Use class method to check availability
+                if framework_class.is_available():
                     available.append(name)
-            except:
-                pass
+            except Exception as e:
+                print(f"Framework {name} check failed: {e}")
         return available

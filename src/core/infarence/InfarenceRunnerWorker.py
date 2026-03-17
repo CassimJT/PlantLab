@@ -65,22 +65,42 @@ class InfarenceRunnerTask(QRunnable):
 
         # Set auto-deletion (freed after run() completes)
         self.setAutoDelete(True)
-
-        # Auto-detect available frameworks
-        self._detect_available_frameworks()
-
+    # detect availale framewors
     def _detect_available_frameworks(self):
         """Detect which frameworks are available"""
         available = []
 
-        # Check each framework
-        for fw_name in ["pytorch", "tensorflow", "executorch", "opencv"]:
-            try:
-                framework = FrameworkFactory.create(fw_name)
-                if framework and framework.is_available():
-                    available.append(fw_name)
-            except Exception as e:
-                print(f"Framework {fw_name} not available: {e}")
+        print("\n=== Framework Detection ===")
+
+        # Import FrameworkFactory here to avoid circular imports
+        from .frameworks import FrameworkFactory
+
+        # Get all registered frameworks
+        all_frameworks = list(FrameworkFactory._frameworks.keys())
+        print(f"Registered frameworks: {all_frameworks}")
+
+        # Suppress warnings during detection
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+
+            # Check each framework using the class method
+            for fw_name in all_frameworks:
+                try:
+                    framework_class = FrameworkFactory._frameworks.get(fw_name)
+                    if framework_class:
+                        print(f"Checking {fw_name}...")
+                        is_avail = framework_class.is_available()
+                        print(f"  → {fw_name} available: {is_avail}")
+                        if is_avail:
+                            available.append(fw_name)
+                    else:
+                        print(f"  → {fw_name} class not found")
+                except Exception as e:
+                    print(f"  → {fw_name} error: {e}")
+
+        print(f"Detected frameworks: {available}")
+        print("=== End Detection ===\n")
 
         self.signals.frameworks_detected.emit(available)
         self.signals.status_message.emit(f"Detected frameworks: {available}")
@@ -126,12 +146,12 @@ class InfarenceRunnerTask(QRunnable):
                 self.is_model_loaded = True
                 self.framework_name = self.framework.get_framework_name()
                 self.signals.model_load_finished.emit(self.framework_name, True)
-                self.signals.status_message.emit(f"✅ Model loaded with {self.framework_name}")
+                self.signals.status_message.emit(f"Model loaded with {self.framework_name}")
             else:
                 self.is_model_loaded = False
                 self.framework_name = self.framework.get_framework_name() if self.framework else "Unknown"
                 self.signals.model_load_failed.emit("Failed to load model", self.framework_name)
-                self.signals.status_message.emit(f"❌ Failed to load model with {self.framework_name}")
+                self.signals.status_message.emit(f"Failed to load model with {self.framework_name}")
 
         except Exception as e:
             error_msg = f"Model loading failed: {str(e)}"
@@ -215,7 +235,7 @@ class InfarenceRunnerTask(QRunnable):
             class_id, confidence = self.framework.postprocess(outputs)
 
             self.signals.progress_updated.emit(100)
-            self.signals.status_message.emit(f"✅ Inference complete: Class {class_id} with {confidence:.2f}% confidence")
+            self.signals.status_message.emit(f"Inference complete: Class {class_id} with {confidence:.2f}% confidence")
 
             # Emit results
             self.signals.inference_finished.emit(class_id, confidence, self.framework_name)
@@ -244,7 +264,7 @@ class InfarenceRunnerTask(QRunnable):
                     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
             if img is None:
-                self.signals.status_message.emit(f"❌ Failed to load image: {image_source}")
+                self.signals.status_message.emit(f"Failed to load image: {image_source}")
 
             return img
         except Exception as e:

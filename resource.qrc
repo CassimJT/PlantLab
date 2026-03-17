@@ -31,5 +31,10 @@
         <file>assets/devices/close.png</file>
         <file>assets/languages/diseases_ny.json</file>
         <file>assets/languages/diseases_en.json</file>
+        <file>assets/dashboard/warning.png</file>
+        <file>assets/dashboard/temperature.png</file>
+        <file>assets/dashboard/ihumidity.png</file>
+        <file>assets/languages/pests_ny.json</file>
+        <file>assets/languages/pests_en.json</file>
     </qresource>
 </RCC>

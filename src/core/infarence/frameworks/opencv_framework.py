@@ -1,6 +1,7 @@
 # frameworks/opencv_framework.py
 import numpy as np
 import cv2
+import warnings
 from .base import BaseFramework, FrameworkFactory
 
 class OpenCVFramework(BaseFramework):
@@ -17,6 +18,21 @@ class OpenCVFramework(BaseFramework):
         if model_path:
             self.load_model(model_path, config_path)
 
+    @classmethod
+    def is_available(cls) -> bool:
+        try:
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                import cv2
+                # OpenCV is usually available if import works
+                return True
+        except ImportError:
+            return False
+        except Exception as e:
+            print(f"Unexpected error checking OpenCV: {e}")
+            return False
+
     def load_model(self, model_path: str, config_path: str = None) -> bool:
         try:
             if model_path.endswith('.onnx'):
@@ -30,18 +46,18 @@ class OpenCVFramework(BaseFramework):
             else:
                 self.net = cv2.dnn.readNet(model_path)
 
-            # Try to use GPU if available
-            self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-            self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+            # Try to use GPU if available (but don't fail if not)
+            try:
+                self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+                self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+            except:
+                pass
 
             print(f"OpenCV DNN model loaded")
             return True
         except Exception as e:
             print(f"Failed to load OpenCV model: {e}")
             return False
-
-    def is_available(self) -> bool:
-        return True  # OpenCV is always available with dnn module
 
     def preprocess(self, image: np.ndarray, input_size: int = 224):
         # OpenCV's blobFromImage handles preprocessing

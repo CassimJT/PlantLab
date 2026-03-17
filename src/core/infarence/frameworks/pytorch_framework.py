@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
+import warnings
 from .base import BaseFramework, FrameworkFactory
 
 class PyTorchFramework(BaseFramework):
@@ -9,24 +10,49 @@ class PyTorchFramework(BaseFramework):
 
     def __init__(self, model_path=None):
         self.model = None
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # Force CPU to avoid CUDA warnings
+        self.device = torch.device('cpu')
         self.model_path = model_path
         if model_path:
             self.load_model(model_path)
 
+    @classmethod
+    # frameworks/pytorch_framework.py
+    def is_available(cls) -> bool:
+        """Check if PyTorch is available (ignore CUDA warnings)"""
+        try:
+            # Suppress all warnings
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                import torch
+                # Don't check CUDA, just return True if import works
+                return True
+        except ImportError:
+            return False
+        except Exception as e:
+            print(f"Unexpected error checking PyTorch: {e}")
+            return False
+
     def load_model(self, model_path: str) -> bool:
         try:
-            # Try loading as TorchScript first
-            try:
-                self.model = torch.jit.load(model_path, map_location=self.device)
-            except:
-                # Fallback to regular PyTorch model
-                self.model = torch.load(model_path, map_location=self.device)
+            # Suppress any warnings during loading
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
 
-            self.model.eval()
-            self.model_path = model_path
-            print(f"PyTorch model loaded on {self.device}")
-            return True
+                # Force CPU
+                with torch.device('cpu'):
+                    # Try loading as TorchScript first
+                    try:
+                        self.model = torch.jit.load(model_path, map_location='cpu')
+                    except:
+                        # Fallback to regular PyTorch model
+                        self.model = torch.load(model_path, map_location='cpu')
+
+                    self.model.eval()
+                    self.model_path = model_path
+                    print(f"PyTorch model loaded on CPU")
+                    return True
         except Exception as e:
             print(f"Failed to load PyTorch model: {e}")
             return False
@@ -50,7 +76,7 @@ class PyTorchFramework(BaseFramework):
         # Add batch dimension
         tensor = tensor.unsqueeze(0)
 
-        # Move to device
+        # Move to device (cpu)
         tensor = tensor.to(self.device)
 
         return tensor

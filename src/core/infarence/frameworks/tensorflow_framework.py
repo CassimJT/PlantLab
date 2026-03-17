@@ -1,6 +1,6 @@
 # frameworks/tensorflow_framework.py
 import numpy as np
-import tensorflow as tf
+import warnings
 from .base import BaseFramework, FrameworkFactory
 
 class TensorFlowFramework(BaseFramework):
@@ -17,8 +17,25 @@ class TensorFlowFramework(BaseFramework):
         if model_path:
             self.load_model(model_path)
 
+    @classmethod
+    def is_available(cls) -> bool:
+        try:
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                import tensorflow as tf
+                # Just check import, don't initialize anything
+                return True
+        except ImportError:
+            return False
+        except Exception as e:
+            print(f"Unexpected error checking TensorFlow: {e}")
+            return False
+
     def load_model(self, model_path: str) -> bool:
         try:
+            import tensorflow as tf
+
             # Check if it's a TFLite model
             if model_path.endswith('.tflite'):
                 self.interpreter = tf.lite.Interpreter(model_path=model_path)
@@ -36,13 +53,6 @@ class TensorFlowFramework(BaseFramework):
             return True
         except Exception as e:
             print(f"Failed to load TensorFlow model: {e}")
-            return False
-
-    def is_available(self) -> bool:
-        try:
-            import tensorflow as tf
-            return True
-        except ImportError:
             return False
 
     def preprocess(self, image: np.ndarray, input_size: int = 224):

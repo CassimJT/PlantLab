@@ -1,0 +1,74 @@
+[
+    {
+        "class_id": 0,
+        "name": "Nyere",
+        "description": "Nyere ndi tizilombo tomwe timawononga mbewu pofuna kuteteza nsabwe zomwe zimatulutsa timadzi tokoma. Zimamanga zisa m'mizu ndipo zimawononga mbewu mwachindunji.",
+        "cure": "Gwiritsani ntchito nyambo, kuwaza diatomaceous earth kuzungulira mbewu, kuwononga nsabwe, kapena mankhwala opha tizilombo ngati zavuta kwambiri."
+    },
+    {
+        "class_id": 1,
+        "name": "Njuchi",
+        "description": "Njuchi ndi zofunika kwambiri pakufalitsa mungu. Koma mitundu ina imadula masamba kumanga zisa. Izi sizipha mbewu koma zimachepetsa mphamvu ya dzuwa.",
+        "cure": "Palibe chithandizo chofunikira chifukwa ndi zothandiza. Ngati zawononga kwambiri, gwiritsani ntchito zotchinga kapena kuwapatsa malo ena omangira zisa."
+    },
+    {
+        "class_id": 2,
+        "name": "Kachidontho",
+        "description": "Kachidontho amawononga masamba, maluwa, ndi zipatso. Ana ake amawononga mizu pomwe akulu amadya masamba. Mitundu yake ndi yambiri kuphatikiza yowononga mbatata ndi nkhaka.",
+        "cure": "Tolani manja, gwiritsani ntchito zotchinga, kuwaza neem oil kapena sopo wophera tizilombo, kapena mankhwala opha tizilombo ngati zavuta."
+    },
+    {
+        "class_id": 3,
+        "name": "Mphutsi",
+        "description": "Mphutsi ndi ana a gulugufe. Zimawononga masamba, kuboola zipatso, ndipo zingathe kuwononga mbewu yonse. Zimaphatikizapo mphutsi za masamba a kabichi ndi tomato.",
+        "cure": "Tolani manja, gwiritsani ntchito Bt (Bacillus thuringiensis), kuwaza neem oil, gwiritsani ntchito zotchinga, kapena kulimbikitsa mbalame ndi tizilombo tomwe timadya mphutsi."
+    },
+    {
+        "class_id": 4,
+        "name": "Nyongolotsi",
+        "description": "Nyongolotsi ndi zothandiza kwambiri chifukwa zimalowetsa mpweya m'nthaka ndi kuwonjezera zakudya. Koma dothi lawo limatha kusokoneza malo, ndipo limakopa nyama zina.",
+        "cure": "Palibe chithandizo chofunikira - ndi zothandiza. Ngati zikuvutitsa, tolani ndi kugwiritsa ntchito ngati feteleza, kapena kuwongolera madzi m'nthaka."
+    },
+    {
+        "class_id": 5,
+        "name": "Khutu",
+        "description": "Khutu ndi tizilombo tomwe timadya zowola koma timatha kuwononga mbande, zipatso zofewa, ndi maluwa. Zimabisala m'malo amdima ndi onyowa masana.",
+        "cure": "Gwiritsani ntchito misampha ya nyuzipepala, kuwaza diatomaceous earth, chepetsani chinyontho, kapena mankhwala opha tizilombo ngati zavuta."
+    },
+    {
+        "class_id": 6,
+        "name": "Dzombe",
+        "description": "Dzombe ndi tizilombo tomwe timadya masamba ambiri, makamaka pamene tachuluka. Zimawononga masamba, nthambi, ndi mbewu, ndipo zimatha kuwononga mbewu zambiri.",
+        "cure": "Gwiritsani ntchito zotchinga, kuwaza neem oil, kulimbikitsa mbalame ndi akangaude, kapena kugwiritsa ntchito Nosema locustae."
+    },
+    {
+        "class_id": 7,
+        "name": "Njenjete",
+        "description": "Njenjete zazikulu siziwononga, koma ana awo amatha kuwononga kwambiri mbewu. Mitundu ina ndi yowononga kwambiri m'minda ya zipatso ndi masamba.",
+        "cure": "Gwiritsani ntchito misampha, kuwaza Bt kwa ana, gwiritsani ntchito zotchinga, sinthanitsani mbewu, kapena kugwiritsa ntchito tizilombo tomwe timadya ana a njenjete."
+    },
+    {
+        "class_id": 8,
+        "name": "Nkhono",
+        "description": "Nkhono zimakonda malo onyowa. Zimadya masamba, mbande, ndipo zimasiya mizere ya madzi. Zingathe kuwononga mbande mu usiku umodzi.",
+        "cure": "Gwiritsani ntchito misampha ya mowa, zotchinga zamkuwa, kuwaza diatomaceous earth, kulimbikitsa achule ndi mbalame, kapena kugwiritsa ntchito nyambo."
+    },
+    {
+        "class_id": 9,
+        "name": "Kholowa",
+        "description": "Kholowa ndi ngati nkhono koma ali ndi chipolopolo. Amadya masamba, nthambi, ndi zipatso, kusiya mizere ya madzi. Amagwira ntchito usiku.",
+        "cure": "Tolani manja usiku, gwiritsani ntchito zotchinga zamkuwa, kuwaza diatomaceous earth, chotsani malo obisalamo, kapena kugwiritsa ntchito nyambo."
+    },
+    {
+        "class_id": 10,
+        "name": "Mavu",
+        "description": "Mavu ambiri ndi othandiza chifukwa amadya tizilombo tina. Koma mitundu ina imawononga zipatso, ndipo kupezeka kwawo pafupi ndi mbewu kumatha kusokoneza.",
+        "cure": "Palibe chithandizo chofunikira - ndi othandiza. Ngati ali ovuta, gwiritsani ntchito misampha, chotsani zisa mosamala, kapena zotchinga."
+    },
+    {
+        "class_id": 11,
+        "name": "Nyenyezi",
+        "description": "Nyenyezi ndi tizilombo tating'ono tomwe timawononga masamba, nthambi, ndi mizu. Ana ake amadya mkati mwa mbewu, kupangitsa kufota ndi kufa.",
+        "cure": "Gwiritsani ntchito misampha, kuwaza nematodes othandiza, chotsani mbali zowonongeka, gwiritsani ntchito zotchinga, kapena mankhwala opha tizilombo."
+    }
+]

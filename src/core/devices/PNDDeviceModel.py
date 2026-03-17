@@ -166,15 +166,12 @@ class PNDDeviceModel(QAbstractListModel):
         self.countChanged.emit()
         self.deviceRemoved.emit(device_id)
 
-    @Slot(str, result=object)
-    def getDevice(self, device_id: str) -> Optional[PNDDevice]:
-        """Get device by ID."""
-        device = self._device_map.get(device_id)
-        return device
+    @Slot(str, result="QObject*")
+    def getDevice(self, device_id: str):
+        return self._device_map.get(device_id)
 
-    @Slot(int, result=object)
-    def getDeviceByIndex(self, index: int) -> Optional[PNDDevice]:
-        """Get device by index."""
+    @Slot(int, result="QObject*")   # Add this
+    def getDeviceByIndex(self, index: int):
         if 0 <= index < len(self._devices):
             return self._devices[index]
         return None
