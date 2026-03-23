@@ -297,6 +297,8 @@ class InfarenceRunnerTask(QRunnable):
                 img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 if img is not None:
                     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    img = cv2.resize(img, (224, 224))
+                    print(f"Image resized to: {img.shape}")
                 return img
             else:
                 # Handle file paths - make sure it's a string and exists

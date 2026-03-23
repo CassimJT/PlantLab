@@ -205,23 +205,35 @@ class ModelConverterTask(QRunnable):
         return default_input
 
     def _convert_to_onnx(self, model, example_input, model_name):
-        """Convert PyTorch model to ONNX format"""
         self.signals.conversion_step.emit("Exporting to ONNX...")
         onnx_path = os.path.join(self.save_path, f"{model_name}.onnx")
-
         try:
             torch.onnx.export(
                 model,
                 example_input,
                 onnx_path,
                 export_params=True,
-                opset_version=11,
+                opset_version=12,                  # ← changed to 12
                 do_constant_folding=True,
                 input_names=['input'],
                 output_names=['output'],
-                dynamic_axes={'input': {0: 'batch_size'},
-                             'output': {0: 'batch_size'}}
+                dynamic_axes=None                  # ← disable dynamic (or set fixed shapes)
             )
+
+            # Optional but strongly recommended: simplify the ONNX graph
+            try:
+                import onnx
+                from onnxsim import simplify
+                model_onnx = onnx.load(onnx_path)
+                model_simp, check = simplify(model_onnx)
+                if check:
+                    onnx.save(model_simp, onnx_path)
+                    print("ONNX model simplified successfully")
+            except ImportError:
+                print("onnxsim not installed – skipping simplification")
+            except Exception as simp_err:
+                print(f"Simplification failed: {simp_err}")
+
             return onnx_path
         except Exception as e:
             self.signals.error.emit(f"ONNX export failed: {str(e)}")
@@ -244,6 +256,8 @@ class ModelConverterTask(QRunnable):
     def _convert_to_executorch(self, model, example_input, model_name):
         """Convert PyTorch model to ExecuTorch format with multiple fallback strategies"""
         self.signals.conversion_step.emit("Exporting to ExecuTorch...")
+        model.eval()
+        model = model.to('cpu')
 
         try:
             # First try: Use Ultralytics built-in export (for YOLO models)

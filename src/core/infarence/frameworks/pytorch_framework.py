@@ -36,25 +36,60 @@ class PyTorchFramework(BaseFramework):
 
     def load_model(self, model_path: str) -> bool:
         try:
-            # Suppress any warnings during loading
+            # Suppress warnings during loading
+            import warnings
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
 
                 # Force CPU
-                with torch.device('cpu'):
-                    # Try loading as TorchScript first
-                    try:
-                        self.model = torch.jit.load(model_path, map_location='cpu')
-                    except:
-                        # Fallback to regular PyTorch model
-                        self.model = torch.load(model_path, map_location='cpu')
+                checkpoint = torch.load(model_path, map_location='cpu')
 
-                    self.model.eval()
-                    self.model_path = model_path
-                    print(f"PyTorch model loaded on CPU")
-                    return True
+                # Case 1: It's a scripted / traced model (torch.jit)
+                if isinstance(checkpoint, torch.jit.ScriptModule):
+                    self.model = checkpoint
+                    print("Loaded TorchScript model")
+
+                # Case 2: It's a state_dict dictionary (most common for .pth / best.pth)
+                elif isinstance(checkpoint, dict):
+                    # Try to find the actual state_dict key (common variations)
+                    state_dict = None
+                    if 'state_dict' in checkpoint:
+                        state_dict = checkpoint['state_dict']
+                    elif 'model' in checkpoint:
+                        state_dict = checkpoint['model']
+                    else:
+                        # Assume the dict itself is the state_dict
+                        state_dict = checkpoint
+
+                    # You MUST know your model architecture here!
+                    # Replace this with your actual MobileNetV3 creation code
+                    from torchvision.models import mobilenet_v3_small  # or your custom model file
+
+                    # Create model instance (same architecture as during training)
+                    self.model = mobilenet_v3_small(num_classes=38)  # ← CHANGE TO YOUR NUM_CLASSES
+
+                    # Load weights (handle possible "module." prefix from DataParallel)
+                    state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+                    self.model.load_state_dict(state_dict, strict=False)  # strict=False helps with mismatches
+
+                    print("Loaded weights into fresh model instance")
+
+                # Case 3: Direct model instance (rare)
+                elif isinstance(checkpoint, torch.nn.Module):
+                    self.model = checkpoint
+                    print("Loaded full model instance")
+
+                else:
+                    raise ValueError(f"Unknown checkpoint type: {type(checkpoint)}")
+
+                self.model.eval()  # now safe
+                self.model.to(self.device)
+                self.model_path = model_path
+                print(f"PyTorch model successfully loaded on {self.device}")
+                return True
+
         except Exception as e:
-            print(f"Failed to load PyTorch model: {e}")
+            print(f"Failed to load PyTorch model: {type(e).__name__}: {str(e)}")
             return False
 
     def preprocess(self, image: np.ndarray, input_size: int = 224):

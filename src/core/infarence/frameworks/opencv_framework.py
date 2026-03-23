@@ -1,97 +1,108 @@
-# frameworks/opencv_framework.py
 import numpy as np
 import cv2
 import warnings
 from .base import BaseFramework, FrameworkFactory
 
 class OpenCVFramework(BaseFramework):
-    """OpenCV framework implementation (for DNN models)"""
+    """OpenCV framework – with ONNX Runtime fallback for modern ONNX models"""
 
     def __init__(self, model_path=None, config_path=None):
         self.net = None
+        self.session = None  # for ONNX Runtime
+        self.input_name = None
         self.model_path = model_path
         self.config_path = config_path
-        self.input_size = 224
-        self.mean = [0.485, 0.456, 0.406]  # ImageNet mean
-        self.std = [0.229, 0.224, 0.225]   # ImageNet std
-
+        self.input_size = 640  # ← change to your YOLO input size (e.g. 640 for YOLOv11)
         if model_path:
             self.load_model(model_path, config_path)
 
     @classmethod
     def is_available(cls) -> bool:
         try:
-            import warnings
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                import cv2
-                # OpenCV is usually available if import works
-                return True
+            import cv2
+            import onnxruntime  # check both
+            return True
         except ImportError:
-            return False
-        except Exception as e:
-            print(f"Unexpected error checking OpenCV: {e}")
             return False
 
     def load_model(self, model_path: str, config_path: str = None) -> bool:
         try:
+            print(f"Attempting to load ONNX model: {model_path}")
+
+            # Prefer ONNX Runtime for modern YOLO ONNX (fixes kernel_shape issue)
+            if model_path.endswith('.onnx'):
+                try:
+                    import onnxruntime as ort
+                    self.session = ort.InferenceSession(
+                        model_path,
+                        providers=['CPUExecutionProvider']  # add 'CUDAExecutionProvider' if you have GPU
+                    )
+                    self.input_name = self.session.get_inputs()[0].name
+                    print("Loaded successfully with ONNX Runtime (recommended)")
+                    return True
+                except Exception as ort_e:
+                    print(f"ONNX Runtime failed: {ort_e} – falling back to OpenCV DNN")
+
+            # Fallback to OpenCV DNN (your original code)
             if model_path.endswith('.onnx'):
                 self.net = cv2.dnn.readNetFromONNX(model_path)
-            elif model_path.endswith('.caffemodel') and config_path:
-                self.net = cv2.dnn.readNetFromCaffe(config_path, model_path)
-            elif model_path.endswith('.pb') and config_path:
-                self.net = cv2.dnn.readNetFromTensorflow(model_path, config_path)
-            elif model_path.endswith('.weights') and config_path:
-                self.net = cv2.dnn.readNetFromDarknet(config_path, model_path)
-            else:
-                self.net = cv2.dnn.readNet(model_path)
+            # ... (keep your other formats: Caffe, TF, Darknet)
 
-            # Try to use GPU if available (but don't fail if not)
-            try:
-                self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
-                self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
-            except:
-                pass
+            # Set backend/target
+            self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+            self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
 
-            print(f"OpenCV DNN model loaded")
+            print("OpenCV DNN model loaded")
             return True
+
         except Exception as e:
-            print(f"Failed to load OpenCV model: {e}")
+            print(f"Failed to load model: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False
 
-    def preprocess(self, image: np.ndarray, input_size: int = 224):
-        # OpenCV's blobFromImage handles preprocessing
-        blob = cv2.dnn.blobFromImage(
-            image,
-            scalefactor=1.0/255.0,
-            size=(input_size, input_size),
-            mean=self.mean,
-            swapRB=True,
-            crop=False
-        )
-        return blob
+    def preprocess(self, image: np.ndarray, input_size: int = 640):  # ← update to YOLO size
+        # For ONNX Runtime: return numpy array in NCHW
+        # For OpenCV: return blob
+        if hasattr(self, 'session'):  # ONNX Runtime path
+            # Resize, normalize, transpose to CHW, add batch
+            img = cv2.resize(image, (input_size, input_size))
+            img = img.astype(np.float32) / 255.0
+            img = img.transpose(2, 0, 1)  # HWC → CHW
+            img = np.expand_dims(img, axis=0)  # add batch
+            return img
+        else:  # OpenCV DNN path
+            return cv2.dnn.blobFromImage(
+                image,
+                scalefactor=1.0/255.0,
+                size=(input_size, input_size),
+                mean=(0,0,0),  # YOLO usually no mean/std subtract
+                swapRB=True,
+                crop=False
+            )
 
     def run_inference(self, input_tensor):
-        self.net.setInput(input_tensor)
-        outputs = self.net.forward()
-        return outputs
+        if hasattr(self, 'session'):  # ONNX Runtime
+            outputs = self.session.run(None, {self.input_name: input_tensor})
+            return outputs[0]  # usually first output is detections
+        else:  # OpenCV DNN
+            self.net.setInput(input_tensor)
+            return self.net.forward()
 
+    # postprocess: adapt for YOLO format (e.g. parse bounding boxes, classes, confs)
+    # YOLO ONNX output is usually [batch, num_boxes, 4+1+num_classes] or similar
     def postprocess(self, outputs) -> tuple:
+        # Simple example – adjust based on your model's output shape
+        # For classification-style: argmax on flattened probs
+        outputs = np.asarray(outputs)
         if outputs.ndim == 2:
             outputs = outputs[0]
-
-        exp_outputs = np.exp(outputs - np.max(outputs))
-        probs = exp_outputs / np.sum(exp_outputs)
-
+        # Softmax + argmax (if classification head)
+        exp = np.exp(outputs - np.max(outputs))
+        probs = exp / np.sum(exp)
         class_id = int(np.argmax(probs))
         confidence = float(probs[class_id] * 100.0)
-
         return class_id, confidence
 
     def get_framework_name(self) -> str:
-        return "OpenCV"
-
-# Register the framework
-FrameworkFactory.register('opencv', OpenCVFramework)
-FrameworkFactory.register('cv2', OpenCVFramework)
-FrameworkFactory.register('dnn', OpenCVFramework)
+        return "OpenCV"  # or "ONNX Runtime" if you want to distinguish
