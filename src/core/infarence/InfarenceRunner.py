@@ -31,7 +31,8 @@ class InfarenceRunner(QObject):
     language_changed = Signal(str)
     framework_changed = Signal(str)
     available_frameworks_changed = Signal(list)
-    category_changed = Signal(str)  # New signal for category
+    category_changed = Signal(str)
+    model_path_changed = Signal()  # Add this signal for model path changes
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -47,7 +48,12 @@ class InfarenceRunner(QObject):
         self._current_framework = "pytorch"
         self._available_frameworks = []
         self._model_path = None
-        self._current_category = "disease"  # New property: "disease" or "pest"
+        self._current_category = "disease"
+
+        # Store loaded framework instance for reuse across threads
+        self._loaded_framework = None
+        self._loaded_framework_name = None
+        self._loaded_model_path = None
 
         # Get DiseaseInfoManager instance
         self._info_manager = DiseaseInfoManager.instance()
@@ -103,9 +109,13 @@ class InfarenceRunner(QObject):
     def available_frameworks(self):
         return self._available_frameworks
 
-    @Property(str, notify=category_changed)  # New property
+    @Property(str, notify=category_changed)
     def current_category(self):
         return self._current_category
+
+    @Property(str, notify=model_path_changed)  # Fixed: changed from is_model_loaded_changed to model_path_changed
+    def model_loaded_path(self):
+        return self._loaded_model_path
 
     # ============================================
     # Private setters
@@ -190,9 +200,9 @@ class InfarenceRunner(QObject):
         print(f"Main frameworks: {main_frameworks}")
         print("=== End Detection ===\n")
 
-        self._available_frameworks = main_frameworks  # Store only main names
+        self._available_frameworks = main_frameworks
         self.available_frameworks_changed.emit(main_frameworks)
-        self.frameworks_detected.emit(available)  # Emit all for debugging
+        self.frameworks_detected.emit(available)
 
     # ============================================
     # Public methods
@@ -224,7 +234,7 @@ class InfarenceRunner(QObject):
             if self._model_path and self._is_model_loaded:
                 self.load_model(self._model_path)
 
-    @Slot(str)  # New slot
+    @Slot(str)
     def set_category(self, category):
         """Set the category (disease or pest)"""
         category = category.lower()
@@ -234,24 +244,40 @@ class InfarenceRunner(QObject):
             if self._class_index >= 0:
                 self._update_disease_info(self._class_index)
 
-    @Slot()
-    @Slot(str)
-    def load_model(self, model_path=None):
-        """Load the ML model"""
-        if model_path is None:
+    @Slot(str, str)
+    def load_model(self, model_path: str = "", framework: str = ""):
+        """Load the ML model for different frameworks"""
+        # Handle empty model_path - try to auto-find
+        if model_path == "" or model_path is None:
             model_path = self._find_model_file()
+            if model_path is None:
+                error_msg = "No model file found in standard locations"
+                print(error_msg)
+                self._is_model_loaded = False
+                self.is_model_loaded_changed.emit()
+                self.inference_failed.emit(error_msg)
+                return
 
-        if not model_path or not os.path.exists(model_path):
-            print("Model not found!")
+        # Validate model exists
+        if not os.path.exists(model_path):
+            error_msg = f"Model file not found: {model_path}"
+            print(error_msg)
             self._is_model_loaded = False
             self.is_model_loaded_changed.emit()
-            self.inference_failed.emit("Model file not found")
+            self.inference_failed.emit(error_msg)
             return
 
+        # Use current framework if not specified
+        if framework == "" or framework is None:
+            framework = self._current_framework
+
+        # Store model path for potential reload
         self._model_path = model_path
+
+        # Emit signal that loading is starting
         self.model_load_started.emit(model_path)
 
-        # Create and configure task
+        # Create the worker task
         task = InfarenceRunnerTask()
 
         # Connect signals
@@ -259,9 +285,14 @@ class InfarenceRunner(QObject):
         task.signals.model_load_failed.connect(self._on_model_load_failed)
         task.signals.status_message.connect(self.status_message)
 
+        # Store reference to current task
+        self.current_task = task
+
         # Start loading in thread pool
-        task.load_model(model_path, self._current_framework)
+        task.load_model(model_path, framework)
         self.thread_pool.start(task)
+
+        print(f"Started loading model with framework: {framework} at path: {model_path}")
 
     def _find_model_file(self):
         """Find model file in standard locations"""
@@ -274,15 +305,14 @@ class InfarenceRunner(QObject):
         # Get user's home directory
         home_dir = os.path.expanduser("~")
 
-        # ===== ADD THIS =====
         # 1. Your Documents/plantlab/models directory (highest priority)
         documents_models = os.path.join(home_dir, "Documents", "plantlab", "models")
         search_paths.append(os.path.join(documents_models, "model.pt"))
         search_paths.append(os.path.join(documents_models, "model.pte"))
         search_paths.append(os.path.join(documents_models, "model.tflite"))
         search_paths.append(os.path.join(documents_models, "model.onnx"))
-        search_paths.append(os.path.join(documents_models, "best.pt"))  # Common training output
-        search_paths.append(os.path.join(documents_models, "last.pt"))   # Common training output
+        search_paths.append(os.path.join(documents_models, "best.pt"))
+        search_paths.append(os.path.join(documents_models, "last.pt"))
 
         # 2. Plantlab project models directory
         models_dir = os.path.join(project_root, "plantlab", "models")
@@ -316,9 +346,18 @@ class InfarenceRunner(QObject):
         return None
 
     def _on_model_load_finished(self, framework_name, success):
-        """Handle model load finished"""
+        """Handle model load finished - store the loaded framework"""
         self._is_model_loaded = success
         self._current_framework = framework_name.lower()
+
+        # Store the loaded framework from the task for reuse
+        if success and self.current_task:
+            self._loaded_framework = self.current_task.framework
+            self._loaded_framework_name = self.current_task.framework_name
+            self._loaded_model_path = self.current_task.model_path
+            self.model_path_changed.emit()  # Emit the model path changed signal
+            print(f"✓ Stored loaded framework: {self._loaded_framework_name}")
+
         self.is_model_loaded_changed.emit()
         self.framework_changed.emit(self._current_framework)
         self.model_load_finished.emit(framework_name, success)
@@ -331,6 +370,10 @@ class InfarenceRunner(QObject):
     def _on_model_load_failed(self, error, framework_name):
         """Handle model load failed"""
         self._is_model_loaded = False
+        self._loaded_framework = None
+        self._loaded_framework_name = None
+        self._loaded_model_path = None
+        self.model_path_changed.emit()  # Emit the model path changed signal
         self.is_model_loaded_changed.emit()
         self.model_load_failed.emit(error, framework_name)
         self.inference_failed.emit(f"Model load failed: {error}")
@@ -338,15 +381,21 @@ class InfarenceRunner(QObject):
     @Slot(str)
     def classify_image(self, image_source):
         """Classify an image from path or base64"""
-        if not self._is_model_loaded:
+        # Use the stored loaded framework instance
+        if not self._is_model_loaded or self._loaded_framework is None:
             self.inference_failed.emit("Model not loaded")
             return
 
         self._clear_results()
         self.inference_started.emit()
 
-        # Create and configure task
+        # Create inference task
         task = InfarenceRunnerTask()
+
+        # Pass the already loaded framework to the inference task
+        task.framework = self._loaded_framework
+        task.framework_name = self._loaded_framework_name
+        task.is_model_loaded = True
 
         # Connect signals
         task.signals.inference_finished.connect(self._on_inference_finished)
@@ -354,21 +403,38 @@ class InfarenceRunner(QObject):
         task.signals.progress_updated.connect(self.progress_updated)
         task.signals.status_message.connect(self.status_message)
 
-        # Set framework (use current)
-        task.framework_name = self._current_framework
-        task.is_model_loaded = True
-        task.framework = None
-
         # Start inference in thread pool
         task.classify_image(image_source)
         self.thread_pool.start(task)
 
     @Slot(str)
+    # InfarenceRunner.py - Fix classify_image_from_file method
+
+    @Slot(str)
     def classify_image_from_file(self, file_path):
         """Classify image from file path"""
-        if file_path.startswith('file://'):
-            file_path = QUrl(file_path).toLocalFile()
+        print(f"Original file_path: {file_path}")
 
+        # Handle different URL formats
+        if file_path.startswith('file://'):
+            # Convert file:// URL to local path
+            file_path = QUrl(file_path).toLocalFile()
+        elif file_path.startswith('qrc://') or file_path.startswith(':/'):
+            # Handle Qt resource paths
+            file_path = file_path
+        else:
+            # It might already be a local path
+            file_path = file_path
+
+        print(f"Converted file_path: {file_path}")
+
+        # Check if file exists
+        if not os.path.exists(file_path):
+            print(f"File does not exist: {file_path}")
+            self.inference_failed.emit(f"File does not exist: {file_path}")
+            return
+
+        # Call classify_image with the correct path
         self.classify_image(file_path)
 
     def _on_inference_finished(self, class_id, confidence, framework_name):

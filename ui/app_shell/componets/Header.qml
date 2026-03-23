@@ -1,10 +1,11 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Dialogs
 
 Rectangle {
     id: root
-    height: 70
+    height: parent.width * .10
     Layout.fillWidth: true
 
     color: "#ffffff"
@@ -12,163 +13,141 @@ Rectangle {
 
     property string titleText: ""
     property string subtitleText: ""
+    property string modelSource: ""
+    property string modelFramework: "pytorch"
 
-    RowLayout {
+    ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 20
-        spacing: 20
+        anchors.margins: 12
+        spacing: 8
 
         /* ======================
-           Logo + Title
+           Model Loader Row
            ====================== */
         RowLayout {
-            spacing: 12
-            Layout.alignment: Qt.AlignVCenter
+            Layout.fillWidth: true
+            spacing: 8
 
-            Rectangle {
-                width: 40
-                height: 40
-                radius: 8
-                color: "#0284c7"
+            TextField {
+                id: modelIdField
+                Layout.fillWidth: true
+                Layout.minimumWidth: 150
+                placeholderText: "Load your model"
+                text: modelSource
 
-                Text {
-                    anchors.centerIn: parent
-                    text: ""
-                    font.pixelSize: 24
-                    color: "white"
-                }
+                onTextChanged: modelSource = text.trim()
             }
 
-            ColumnLayout {
-                spacing: 2
-
-                Text {
-                    text: root.titleText
-                    font.pixelSize: 18
-                    font.bold: true
-                    color: "#0f172a"
-                }
-
-                Text {
-                    text: root.subtitleText
-                    font.pixelSize: 12
-                    color: "#64748b"
-                }
+            Button {
+                text: "Browse"
+                Layout.preferredWidth: 90
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: fileDialog.open()
             }
         }
 
-        /* Push right side */
-        Item { Layout.fillWidth: true }
-
         /* ======================
-           Right Controls
+           Controls Row
            ====================== */
         RowLayout {
-            spacing: 20
-            Layout.alignment: Qt.AlignVCenter
+            Layout.fillWidth: true
+            spacing: 10
 
-            /* Language selector */
-            RowLayout {
-                spacing: 8
+            // Framework ComboBox
+            ComboBox {
+                id: frameworkCombo
+                Layout.fillWidth: true
+                Layout.minimumWidth: 120
+                enabled: !InfarenceRunner.is_model_loaded
 
-                Text {
-                    text: qsTr("Language") + ":"
-                    font.pixelSize: 14
-                    color: "#475569"
-                }
+                model: [
+                    { text: "Auto", value: "auto" },
+                    { text: "PyTorch", value: "pytorch" },
+                    { text: "TensorFlow", value: "tensorflow" },
+                    { text: "OpenCV", value: "opencv" },
+                    { text: "ExecuTorch", value: "executorch" }
+                ]
 
-                ComboBox {
-                    id: languageCombo
-                    width: 140
+                textRole: "text"
+                valueRole: "value"
 
-                    model: [
-                        { text: "English", value: "en" },
-                        { text: "Chichewa", value: "ny" }
-                    ]
-
-                    textRole: "text"
-                    valueRole: "value"
-
-                    currentIndex: InfarenceRunner.current_language() === "ny" ? 1 : 0
-
-                    onActivated: {
-                        if (currentValue)
-                            InfarenceRunner.set_language(currentValue)
-                    }
-
-                    delegate: ItemDelegate {
-                        width: languageCombo.width
-                        text: modelData.text
-                        highlighted: languageCombo.highlightedIndex === index
-                    }
-
-                    indicator: Canvas {
-                        width: 12
-                        height: 8
-
-                        x: languageCombo.width - width - languageCombo.rightPadding
-                        y: languageCombo.topPadding +
-                           (languageCombo.availableHeight - height) / 2
-
-                        contextType: "2d"
-
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.reset()
-
-                            ctx.beginPath()
-                            ctx.moveTo(0,0)
-                            ctx.lineTo(width,0)
-                            ctx.lineTo(width/2,height)
-                            ctx.closePath()
-
-                            ctx.fillStyle = "#64748b"
-                            ctx.fill()
-                        }
+                onActivated: {
+                    let selected = model[currentIndex].value
+                    if (selected !== "auto") {
+                        modelFramework = selected
+                        InfarenceRunner.set_framework(selected)
                     }
                 }
             }
 
-            /* ======================
-               Category selector
-               ====================== */
-            RowLayout {
-                spacing: 8
+            // Language ComboBox
+            ComboBox {
+                Layout.preferredWidth: 90
+                Layout.alignment: Qt.AlignVCenter
 
-                Text {
-                    text: qsTr("Type") + ":"
-                    font.pixelSize: 14
-                    color: "#475569"
+                model: [
+                    { text: "EN", value: "en" },
+                    { text: "NY", value: "ny" }
+                ]
+
+                textRole: "text"
+                valueRole: "value"
+
+                Component.onCompleted: {
+                    currentIndex = InfarenceRunner.current_language === "ny" ? 1 : 0
                 }
 
-                ComboBox {
-                    id: categoryCombo
-                    width: 120
+                onActivated: {
+                    InfarenceRunner.set_language(currentValue)
+                }
+            }
 
-                    model: [
-                        { text: qsTr("Disease"), value: "disease" },
-                        { text: qsTr("Pest"), value: "pest" }
-                    ]
+            // Category ComboBox
+            ComboBox {
+                Layout.preferredWidth: 110
+                Layout.alignment: Qt.AlignVCenter
 
-                    textRole: "text"
-                    valueRole: "value"
+                model: [
+                    { text: "Disease", value: "disease" },
+                    { text: "Pest", value: "pest" }
+                ]
 
-                    Component.onCompleted: {
-                        currentIndex = 0
-                    }
+                textRole: "text"
+                valueRole: "value"
 
-                    onActivated: function(index) {
-                        if (model[index])
-                            InfarenceRunner.set_category(model[index].value)
-                    }
-
-                    delegate: ItemDelegate {
-                        width: categoryCombo.width
-                        text: modelData.text
-                        highlighted: categoryCombo.highlightedIndex === index
-                    }
+                onActivated: {
+                    InfarenceRunner.set_category(currentValue)
                 }
             }
         }
+    }
+
+    FileDialog {
+        id: fileDialog
+        title: "Select Model File"
+
+        nameFilters: [
+            "Model files (*.pt *.pth *.h5 *.pb *.tflite *.onnx *.caffemodel *.weights *.pte)",
+            "All files (*)"
+        ]
+
+        onAccepted: {
+            var filePath = selectedFile.toString()
+            if (filePath.startsWith("file://"))
+                filePath = filePath.substring(7)
+
+            modelSource = filePath
+            modelIdField.text = modelSource
+
+            var framework = frameworkCombo.currentValue
+            if (framework === "auto")
+                InfarenceRunner.load_model(modelSource)
+            else
+                InfarenceRunner.load_model(modelSource, framework)
+        }
+    }
+
+    Component.onCompleted: {
+        root.modelSource = InfarenceRunner.model_loaded_path
     }
 }

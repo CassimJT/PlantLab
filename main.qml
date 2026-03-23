@@ -39,4 +39,5 @@ ApplicationWindow {
         source: "ui/app_shell/Mainwindow.qml"
 
     }
+
 }

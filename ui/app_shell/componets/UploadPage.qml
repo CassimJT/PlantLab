@@ -8,125 +8,74 @@ Item {
     property string selectedImagePath: ""
     property bool isProcessing: false
 
-    signal imageSelected(string path)
     signal analyzeClicked()
 
+    // Debug: Monitor path changes
+    onSelectedImagePathChanged: {
+        console.log("UploadPage.root.selectedImagePath changed to:", selectedImagePath)
+    }
+
     ColumnLayout {
-        anchors.centerIn: parent
-        width: Math.min(parent.width * 0.8, 600)
-        spacing: 32
+        anchors.fill: parent
+        anchors.margins: 40
+        spacing: 30
 
         /* ======================
-           Instruction text
+           TITLE / STATE MESSAGE
            ====================== */
         Text {
-            text: qsTr("Select an image to begin")
-            font.pixelSize: 16
-            color: "#64748b"
+            text: InfarenceRunner.is_model_loaded
+                  ? "Upload plant image"
+                  : "Load a model first"
+
+            font.pixelSize: 18
+            color: InfarenceRunner.is_model_loaded ? "#64748b" : "#dc2626"
+
             Layout.alignment: Qt.AlignHCenter
         }
 
         /* ======================
-           Image Drop Zone
+           DROP ZONE
            ====================== */
         DropZone {
             id: dropZone
-
-            Layout.preferredWidth: 500
-            Layout.preferredHeight: 350
             Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: 500
+            Layout.preferredHeight: 300
+
+            enabled: InfarenceRunner.is_model_loaded
+            opacity: enabled ? 1.0 : 0.5
 
             selectedImagePath: root.selectedImagePath
 
+            // Connect the signal to update root's selectedImagePath
             onImageSelected: function(path) {
-                root.imageSelected(path)
+                console.log("DropZone onImageSelected called with path:", path)
+                root.selectedImagePath = path
             }
         }
 
         /* ======================
-           Analyze Button
+           ANALYZE BUTTON
            ====================== */
         Button {
             id: analyzeButton
-
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 250
-            Layout.preferredHeight: 56
+            Layout.preferredWidth: 220
+            Layout.preferredHeight: 50
 
-            enabled: root.selectedImagePath.length > 0 && !root.isProcessing
+            text: root.isProcessing ? "Analyzing..." : "Analyze"
 
-            background: Rectangle {
-                radius: 28
-                color: analyzeButton.enabled ? "#0284c7" : "#94a3b8"
+            enabled: root.selectedImagePath !== "" &&
+                     InfarenceRunner.is_model_loaded &&
+                     !root.isProcessing
+
+            onClicked: {
+                console.log("Analyze button clicked with selectedImagePath:", root.selectedImagePath)
+                root.analyzeClicked()
             }
-
-            contentItem: RowLayout {
-                anchors.centerIn: parent
-                spacing: 12
-
-                BusyIndicator {
-                    running: root.isProcessing
-                    visible: root.isProcessing
-                    width: 24
-                    height: 24
-                }
-
-                Text {
-                    text: root.isProcessing
-                          ? qsTr("Analyzing...")
-                          : qsTr("Analyze Plant")
-
-                    font.pixelSize: 16
-                    font.bold: true
-                    color: "white"
-                    Layout.alignment: Qt.AlignCenter
-                }
-
-                Text {
-                    text: "→"
-                    font.pixelSize: 20
-                    color: "white"
-                    visible: !root.isProcessing
-                }
-            }
-
-            onClicked: root.analyzeClicked()
         }
 
-        /* ======================
-           Framework Selector
-           ====================== */
-        RowLayout {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 16
-
-            visible: InfarenceRunner.available_frameworks.length > 0
-
-            Text {
-                text: qsTr("Framework") + ":"
-                color: "#64748b"
-                font.pixelSize: 14
-            }
-
-            ComboBox {
-                id: frameworkCombo
-                width: 180
-
-                model: InfarenceRunner.available_frameworks
-
-                currentIndex: {
-                    if (!model || model.length === 0)
-                        return -1
-
-                    var idx = model.indexOf(InfarenceRunner.current_framework)
-                    return idx >= 0 ? idx : 0
-                }
-
-                onActivated: function(index) {
-                    if (index >= 0)
-                        InfarenceRunner.set_framework(currentText)
-                }
-            }
-        }
+        Item { Layout.fillHeight: true }
     }
 }
