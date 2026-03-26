@@ -45,6 +45,8 @@ files = [
 "src/core/research/FieldDataset.py",
 "src/core/research/StatisticalAnalyzer.py",
 "src/core/research/__init__.py",
+"src/core/rtsp/RTSVideoOutput.py",
+"src/core/rtsp/RTSVideoWorker.py",
 "src/core/users/User.py",
 "ui/analysis/AnalysisPage.qml",
 "ui/analysis/AnalysisScreen.qml",

@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 import rc_resource
 
 # Core controllers
@@ -28,6 +28,7 @@ from src.core.devices.DeviceState import DeviceState
 # NEW: Import inference modules
 from src.core.infarence.InfarenceRunner import InfarenceRunner
 from src.core.infarence.DiseaseInfoManager import DiseaseInfoManager
+from src.core.rtsp.RTSVideoOutput import RTSVideoOutput
 
 if __name__ == "__main__":
     app = QGuiApplication(sys.argv)
@@ -106,6 +107,9 @@ if __name__ == "__main__":
     engine.rootContext().setContextProperty("InfarenceRunner", infarence_runner)
     engine.rootContext().setContextProperty("DiseaseInfoManager", disease_info_manager)
     engine.rootContext().setContextProperty("AvailableFrameworks", available_frameworks)
+
+    # rtsp system
+    qmlRegisterType(RTSVideoOutput, "RTSVideoOutput", 1, 0, "RTSVideoOutput")
 
     # ======================================
     # Load QML
