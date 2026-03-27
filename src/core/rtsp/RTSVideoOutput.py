@@ -8,6 +8,9 @@ import cv2
 import numpy as np
 import threading
 import concurrent.futures
+import torch
+from ultralytics import YOLO
+import os
 
 
 class RTSVideoOutput(QQuickItem):
@@ -21,8 +24,10 @@ class RTSVideoOutput(QQuickItem):
     overlayTextChanged = Signal()
     detectionEnabledChanged = Signal()
     fpsChanged = Signal()
-    isConnectedChanged = Signal(bool)  # Add this signal
+    isConnectedChanged = Signal(bool)
     detectionResult = Signal(str)
+    modelloaded = Signal()
+    modelLoadingFailed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -35,7 +40,10 @@ class RTSVideoOutput(QQuickItem):
         self._overlay_text = "ESP32-CAM"
         self._detection_enabled = False
         self._current_fps = 0.0
-        self._is_connected = False  # Add this property
+        self._is_connected = False
+        self._is_model_loaded = False
+        self._modelPath = "/media/csociety/Backup/CISociety/Qt/Projects/Plantlab/assets/models/best.pt"
+        self._model = None
 
         # Worker management
         self._worker = None
@@ -47,6 +55,9 @@ class RTSVideoOutput(QQuickItem):
         self._texture_size = None
 
         print("RTSVideoOutput created")
+
+        # Load model on initialization
+        self._loadModel()
 
     # ======================================
     # Property getters/setters
@@ -111,9 +122,24 @@ class RTSVideoOutput(QQuickItem):
     def fps(self):
         return self._current_fps
 
-    @Property(bool, notify=isConnectedChanged)  # Add isConnected property
+    @Property(bool, notify=isConnectedChanged)
     def isConnected(self):
         return self._is_connected
+
+    @Property(bool)
+    def isModelLoaded(self):
+        return self._is_model_loaded
+
+    @Property(str)
+    def modelPath(self):
+        return self._modelPath
+
+    @modelPath.setter
+    def modelPath(self, path):
+        if self._modelPath == path:
+            return
+        self._modelPath = path
+        self._loadModel()
 
     # ======================================
     # Public slots
@@ -124,7 +150,10 @@ class RTSVideoOutput(QQuickItem):
         super().componentComplete()
         print(f"RTSVideoOutput componentComplete, URL: {self._rts_url}")
         if self._rts_url:
-            self.startProcessing()
+            try:
+                self.startProcessing()
+            except Exception as e:
+                print(f"Error in componentComplete: {e}")
 
     @Slot()
     def startProcessing(self):
@@ -149,7 +178,7 @@ class RTSVideoOutput(QQuickItem):
         self._worker.error.connect(self._onWorkerError)
         self._worker.fpsUpdated.connect(self._onFpsUpdated)
         self._worker.detectionResult.connect(self._onDetectionResult)
-        self._worker.connectionStatusChanged.connect(self._onConnectionChanged)  # Add this connection
+        self._worker.connectionStatusChanged.connect(self._onConnectionChanged)
 
         self._worker_thread.start()
 
@@ -173,13 +202,20 @@ class RTSVideoOutput(QQuickItem):
         print("Stopping processing")
 
         if self._worker:
-            QMetaObject.invokeMethod(self._worker, "stop", Qt.ConnectionType.QueuedConnection)
+            # Stop the worker first
+            QMetaObject.invokeMethod(self._worker, "stop", Qt.ConnectionType.BlockingQueuedConnection)
+
+            # Wait for worker to finish
+            if self._worker_thread and self._worker_thread.isRunning():
+                self._worker_thread.quit()
+                if not self._worker_thread.wait(3000):
+                    print("Worker thread didn't finish in time")
+
+            # Clean up
             self._worker.deleteLater()
             self._worker = None
 
         if self._worker_thread:
-            self._worker_thread.quit()
-            self._worker_thread.wait(2000)
             self._worker_thread.deleteLater()
             self._worker_thread = None
 
@@ -187,9 +223,14 @@ class RTSVideoOutput(QQuickItem):
             self._frame = QImage()
 
         self._processing = False
-        self._setConnected(False)  # Set disconnected
+        self._setConnected(False)
         self.update()
         print("Processing stopped")
+
+    @Slot()
+    def reloadModel(self):
+        """Manually reload the model"""
+        self._loadModel()
 
     # ======================================
     # Private slots
@@ -251,6 +292,45 @@ class RTSVideoOutput(QQuickItem):
         QMetaObject.invokeMethod(self._worker, "setDetectionEnabled",
                                 Qt.ConnectionType.QueuedConnection,
                                 Q_ARG(bool, self._detection_enabled))
+
+        # Pass model to worker if loaded (direct assignment since we can't pass through signal)
+        if self._is_model_loaded and self._model is not None and self._worker:
+            self._worker.setModel(self._model)
+
+    def _loadModel(self):
+        """Load the model when the class app opens"""
+        try:
+            # Check if model file exists
+            if not os.path.exists(self._modelPath):
+                error_msg = f"Model file not found at: {self._modelPath}"
+                print(error_msg)
+                self._is_model_loaded = False
+                self._model = None
+                self.modelLoadingFailed.emit(error_msg)
+                return
+
+            print(f"Loading model from: {self._modelPath}")
+
+            # Load the YOLO model
+            self._model = YOLO(self._modelPath)
+            self._is_model_loaded = True
+            print("Pest detection model loaded successfully")
+            if hasattr(self._model, 'names'):
+                print(f"Model loaded with {len(self._model.names)} classes")
+
+            # If worker exists, set the model directly
+            if self._worker:
+                self._worker.setModel(self._model)
+
+            # Emit signal to notify QML that model is ready
+            self.modelloaded.emit()
+
+        except Exception as e:
+            error_msg = f"Error loading model: {str(e)}"
+            print(error_msg)
+            self._is_model_loaded = False
+            self._model = None
+            self.modelLoadingFailed.emit(error_msg)
 
     # ======================================
     # Scene Graph Rendering
