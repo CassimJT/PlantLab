@@ -28,20 +28,6 @@ Rectangle {
 
         visible: root.selectedImagePath === ""
 
-        Rectangle {
-            Layout.alignment: Qt.AlignHCenter
-            width: 80
-            height: 80
-            radius: 40
-            color: "#f1f5f9"
-
-            Text {
-                anchors.centerIn: parent
-                text: "📷"
-                font.pixelSize: 40
-            }
-        }
-
         Text {
             text: qsTr("Drag & Drop Image Here")
             font.pixelSize: 16

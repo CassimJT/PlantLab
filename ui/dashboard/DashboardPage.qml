@@ -45,7 +45,11 @@ Page {
                 }
             }
 
-            MetricCard { Layout.fillWidth: true; Layout.preferredHeight: dashboard.metricCardheight }
+            MetricCard {
+                Layout.fillWidth:
+                    true; Layout.preferredHeight: dashboard.metricCardheight
+                BusyIndicator { anchors.centerIn: parent }
+            }
             MetricCard {
                 Layout.fillWidth: true
                 Layout.preferredHeight: dashboard.metricCardheight
@@ -69,8 +73,16 @@ Page {
             Layout.fillWidth: true
             spacing: 16
             Layout.fillHeight: true
-            ChartCard { Layout.fillWidth: true; Layout.preferredHeight: dashboard.chartHeight }
-            ChartCard { Layout.fillWidth: true; Layout.preferredHeight: dashboard.chartHeight }
+            ChartCard {
+                Layout.fillWidth: true;
+                Layout.preferredHeight: dashboard.chartHeight
+                BusyIndicator { anchors.centerIn: parent }
+            }
+            ChartCard {
+                Layout.fillWidth: true;
+                Layout.preferredHeight: dashboard.chartHeight
+                BusyIndicator { anchors.centerIn: parent }
+            }
         }
     }
 
