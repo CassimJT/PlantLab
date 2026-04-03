@@ -70,8 +70,8 @@ Window {
         id: detectionOverlay
         anchors.top: parent.top
         anchors.right: parent.right
-        width: 200
-        height: 80
+        width: 250
+        height: 90
         color: "#80000000"
         radius: 5
         anchors.margins: 10
