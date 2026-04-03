@@ -201,25 +201,31 @@ class MQTTClient(QObject):
 
     @Slot()
     def connectToBroker(self):
-        """Establish connection to MQTT broker."""
+        """Establish connection to MQTT broker with failover."""
         self._setup_client()
 
         if self._is_connected:
             return
 
-        try:
-            # Set username/password if provided
-            if self._username:
-                self._client.username_pw_set(self._username, self._password)
+        brokers = ["192.168.8.130", "192.168.8.149"]  # desktop, laptop
+        port = self._port
 
-            # Connect to broker
-            self._client.connect(self._host, self._port, keepalive=60)
+        for broker in brokers:
+            self._host = broker
+            try:
+                if self._username:
+                    self._client.username_pw_set(self._username, self._password)
 
-            # Start network loop in background thread
-            self._client.loop_start()
+                self._client.connect(self._host, port, keepalive=60)
+                self._client.loop_start()
+                print(f"Connected to MQTT broker: {broker}")
+                return
 
-        except Exception as e:
-            self.errorOccurred.emit(f"Connection error: {str(e)}")
+            except Exception as e:
+                print(f"Failed to connect to broker {broker}: {e}")
+
+        # If none succeeded
+        self.errorOccurred.emit("MQTT connection failed on all brokers")
 
     @Slot()
     def disconnectFromBroker(self):
