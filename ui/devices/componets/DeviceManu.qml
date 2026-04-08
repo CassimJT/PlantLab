@@ -194,7 +194,7 @@ Popup {
                     }
                     if (DeviceConfigurator && deviceId) {
                         console.log("Setting device power:", deviceId, checked)
-                       // DeviceConfigurator.setDevicePower(deviceId, checked)
+                        DeviceConfigurator.setDevicePower(deviceId, checked)
                     }
                 }
                 indicator: Rectangle {
