@@ -3,8 +3,10 @@ import sys
 from pathlib import Path
 
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 import rc_resource
+
 
 # Core controllers
 from src.core.controllers.FileSystemController import FileSystemController
@@ -31,7 +33,7 @@ from src.core.infarence.DiseaseInfoManager import DiseaseInfoManager
 from src.core.rtsp.RTSVideoOutput import RTSVideoOutput
 
 if __name__ == "__main__":
-    app = QGuiApplication(sys.argv)
+    app = QApplication(sys.argv)
     engine = QQmlApplicationEngine()
 
     # ======================================

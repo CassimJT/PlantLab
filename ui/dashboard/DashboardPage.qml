@@ -65,7 +65,6 @@ Page {
             ChartCard {
                 Layout.fillWidth: true
                 Layout.preferredHeight: dashboard.height * 0.40
-                BusyIndicator { anchors.centerIn: parent }
             }
         }
 
@@ -73,15 +72,14 @@ Page {
             Layout.fillWidth: true
             spacing: 16
             Layout.fillHeight: true
-            ChartCard {
+            PieCard {
                 Layout.fillWidth: true;
                 Layout.preferredHeight: dashboard.chartHeight
-                BusyIndicator { anchors.centerIn: parent }
             }
-            ChartCard {
+            PieCard {
                 Layout.fillWidth: true;
                 Layout.preferredHeight: dashboard.chartHeight
-                BusyIndicator { anchors.centerIn: parent }
+
             }
         }
     }

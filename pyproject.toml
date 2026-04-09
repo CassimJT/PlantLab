@@ -80,6 +80,7 @@ files = [
 "ui/dashboard/component/CircularProgressBar.qml",
 "ui/dashboard/component/DHTMeter.qml",
 "ui/dashboard/component/MetricCard.qml",
+"ui/dashboard/component/PieCard.qml",
 "ui/data/DataExplorerPage.qml",
 "ui/data/componets/FileView.qml",
 "ui/data/componets/PropertySideBar.qml",
