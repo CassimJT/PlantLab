@@ -1,5 +1,5 @@
 # This Python file uses the following encoding: utf-8
-from PySide6.QtCore import QObject, Signal, Slot, QUrl
+from PySide6.QtCore import QObject, Signal, Slot, QUrl, Property
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 import json
 
@@ -10,12 +10,17 @@ class ApiClient(QObject):
     requestFinished = Signal(str, dict)
     requestFailed = Signal(str, str)
     batchFinished = Signal(bool, int, int, dict)
+    loadingChanged = Signal()
+    progressChanged = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._networkManager = QNetworkAccessManager(self)
-        self._baseUrl = "http://192.168.8.130:5000/api/inference"
+        self._baseUrl = "https://plantdoctor-api.onrender.com/api/inference"
         self._authToken = ""
+        self._isLoading = False
+        self._currentProgress = 0
+        self._totalProgress = 0
 
         # Connect network manager
         self._networkManager.finished.connect(self._onNetworkReply)
@@ -23,6 +28,23 @@ class ApiClient(QObject):
     # =======================================================
     # Properties
     # =======================================================
+    @Property(bool, notify=loadingChanged)
+    def isLoading(self):
+        return self._isLoading
+
+    def setIsLoading(self, loading):
+        if self._isLoading != loading:
+            self._isLoading = loading
+            self.loadingChanged.emit()
+
+    @Property(int, notify=progressChanged)
+    def currentProgress(self):
+        return self._currentProgress
+
+    @Property(int, notify=progressChanged)
+    def totalProgress(self):
+        return self._totalProgress
+
     def setBaseUrl(self, url):
         self._baseUrl = url
 
@@ -37,6 +59,7 @@ class ApiClient(QObject):
         """
         Perform a GET request to the given endpoint.
         """
+        self.setIsLoading(True)
         url = QUrl(self._baseUrl + endpoint)
         request = QNetworkRequest(url)
         self._setupRequestHeaders(request)
@@ -47,6 +70,7 @@ class ApiClient(QObject):
         """
         Perform a POST request to the given endpoint with payload.
         """
+        self.setIsLoading(True)
         url = QUrl(self._baseUrl + endpoint)
         request = QNetworkRequest(url)
         self._setupRequestHeaders(request)
@@ -59,6 +83,10 @@ class ApiClient(QObject):
         """
         Send batch inferences to the server.
         """
+        self._totalProgress = len(inferences)
+        self._currentProgress = 0
+        self.progressChanged.emit()
+
         payload = {
             "inferences": inferences,
             "batchSize": len(inferences)
@@ -88,6 +116,10 @@ class ApiClient(QObject):
             request.setRawHeader(b"Authorization", f"Bearer {self._authToken}".encode())
 
     def _onNetworkReply(self, reply):
+        self.setIsLoading(False)
+        self._currentProgress = self._totalProgress
+        self.progressChanged.emit()
+
         endpoint = reply.url().toString()
         error = reply.error()
 

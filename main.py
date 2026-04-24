@@ -100,7 +100,7 @@ if __name__ == "__main__":
     researcher_api_client = ApiClient()
 
     # Set the base URL for your inference server
-    researcher_api_client.setBaseUrl("http://192.168.8.130:5000/api/inference")
+    researcher_api_client.setBaseUrl("https://plantdoctor-api.onrender.com/api/inference")
 
     # Create data service with the API client
     data_service = DataService(researcher_api_client)

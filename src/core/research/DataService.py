@@ -1,5 +1,5 @@
 # This Python file uses the following encoding: utf-8
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot, Property
 from .ApiClient import ApiClient
 
 
@@ -11,15 +11,30 @@ class DataService(QObject):
     inferenceResultSubmitted = Signal(bool)
     errorOccurred = Signal(str)
     inferencesFetched = Signal(list)
+    loadingChanged = Signal()
 
     def __init__(self, apiClient=None, parent=None):
         super().__init__(parent)
         self._apiClient = apiClient
+        self._isLoading = False
 
         # Connect ApiClient signals if provided
         if self._apiClient:
             self._apiClient.requestFinished.connect(self._onRequestFinished)
             self._apiClient.requestFailed.connect(self._onRequestFailed)
+            self._apiClient.loadingChanged.connect(self._onLoadingChanged)
+
+    # =======================================================
+    # Properties
+    # =======================================================
+    @Property(bool, notify=loadingChanged)
+    def isLoading(self):
+        return self._isLoading
+
+    def setIsLoading(self, loading):
+        if self._isLoading != loading:
+            self._isLoading = loading
+            self.loadingChanged.emit()
 
     # =======================================================
     # Public API / Slots
@@ -32,6 +47,7 @@ class DataService(QObject):
         if not self._apiClient:
             self.errorOccurred.emit("ApiClient not set")
             return
+        self.setIsLoading(True)
         self._apiClient.fetchAllInferences()
 
     @Slot(dict)
@@ -42,6 +58,7 @@ class DataService(QObject):
         if not self._apiClient:
             self.errorOccurred.emit("ApiClient not set")
             return
+        self.setIsLoading(True)
         self._apiClient.post("", inferenceData)
 
     @Slot(list)
@@ -52,6 +69,7 @@ class DataService(QObject):
         if not self._apiClient:
             self.errorOccurred.emit("ApiClient not set")
             return
+        self.setIsLoading(True)
         self._apiClient.postBatch(inferencesList)
 
     # =======================================================
@@ -62,6 +80,8 @@ class DataService(QObject):
         """
         Handle raw data from ApiClient and convert to Python objects.
         """
+        self.setIsLoading(False)
+
         # Handle different endpoints
         if "inferences" in data:
             # List endpoint returns { inferences: [...] }
@@ -83,7 +103,14 @@ class DataService(QObject):
         """
         Handle errors from ApiClient.
         """
+        self.setIsLoading(False)
         self.errorOccurred.emit(f"{endpoint}: {errorMessage}")
+
+    @Slot(bool)
+    def _onLoadingChanged(self):
+        """Propagate loading state from ApiClient"""
+        if self._apiClient:
+            self.setIsLoading(self._apiClient.isLoading)
 
     # =======================================================
     # Setter / Getter for ApiClient
@@ -94,7 +121,9 @@ class DataService(QObject):
         if self._apiClient:
             self._apiClient.requestFinished.disconnect(self._onRequestFinished)
             self._apiClient.requestFailed.disconnect(self._onRequestFailed)
+            self._apiClient.loadingChanged.disconnect(self._onLoadingChanged)
         self._apiClient = apiClient
         if self._apiClient:
             self._apiClient.requestFinished.connect(self._onRequestFinished)
             self._apiClient.requestFailed.connect(self._onRequestFailed)
+            self._apiClient.loadingChanged.connect(self._onLoadingChanged)
