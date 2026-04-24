@@ -1,6 +1,7 @@
 # This Python file uses the following encoding: utf-8
-from PySide6.QtCore import QObject, Signal, Slot
-
+from PySide6.QtCore import QObject, Signal, Slot, QUrl
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+import json
 
 class ApiClient(QObject):
     # =======================================================
@@ -8,11 +9,25 @@ class ApiClient(QObject):
     # =======================================================
     requestFinished = Signal(str, dict)
     requestFailed = Signal(str, str)
+    batchFinished = Signal(bool, int, int, dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Placeholder for network manager (e.g., QNetworkAccessManager)
-        self._networkManager = None
+        self._networkManager = QNetworkAccessManager(self)
+        self._baseUrl = "http://192.168.8.130:5000/api/inference"
+        self._authToken = ""
+
+        # Connect network manager
+        self._networkManager.finished.connect(self._onNetworkReply)
+
+    # =======================================================
+    # Properties
+    # =======================================================
+    def setBaseUrl(self, url):
+        self._baseUrl = url
+
+    def setAuthToken(self, token):
+        self._authToken = token
 
     # =======================================================
     # Slots / Public API
@@ -21,47 +36,77 @@ class ApiClient(QObject):
     def get(self, endpoint):
         """
         Perform a GET request to the given endpoint.
-        Emit requestFinished or requestFailed.
         """
-        # TODO: implement GET logic
-        pass
+        url = QUrl(self._baseUrl + endpoint)
+        request = QNetworkRequest(url)
+        self._setupRequestHeaders(request)
+        self._networkManager.get(request)
 
-    @Slot(str, dict)
+    @Slot(dict)
     def post(self, endpoint, payload):
         """
         Perform a POST request to the given endpoint with payload.
-        Emit requestFinished or requestFailed.
         """
-        # TODO: implement POST logic
-        pass
+        url = QUrl(self._baseUrl + endpoint)
+        request = QNetworkRequest(url)
+        self._setupRequestHeaders(request)
 
-    @Slot(str, dict)
-    def put(self, endpoint, payload):
+        json_data = json.dumps(payload).encode('utf-8')
+        self._networkManager.post(request, json_data)
+
+    @Slot(dict)
+    def postBatch(self, inferences):
         """
-        Optional: perform a PUT request.
+        Send batch inferences to the server.
         """
-        # TODO
-        pass
+        payload = {
+            "inferences": inferences,
+            "batchSize": len(inferences)
+        }
+        self.post("/batch", payload)
+
+    @Slot()
+    def fetchAllInferences(self):
+        """
+        Fetch all inferences from the server.
+        """
+        self.get("")
 
     @Slot(str)
-    def delete(self, endpoint):
+    def getInferenceById(self, inference_id):
         """
-        Optional: perform a DELETE request.
+        Fetch a single inference by ID.
         """
-        # TODO
-        pass
+        self.get(f"/{inference_id}")
 
     # =======================================================
     # Internal Helpers
     # =======================================================
+    def _setupRequestHeaders(self, request):
+        request.setHeader(QNetworkRequest.ContentTypeHeader, "application/json")
+        if self._authToken:
+            request.setRawHeader(b"Authorization", f"Bearer {self._authToken}".encode())
+
+    def _onNetworkReply(self, reply):
+        endpoint = reply.url().toString()
+        error = reply.error()
+
+        if error != QNetworkReply.NoError:
+            self._handleError(endpoint, reply.errorString())
+            reply.deleteLater()
+            return
+
+        response_data = reply.readAll().data().decode('utf-8')
+        try:
+            json_data = json.loads(response_data)
+            self._handleResponse(endpoint, json_data)
+        except json.JSONDecodeError as e:
+            self._handleError(endpoint, f"JSON Parse Error: {str(e)}")
+
+        reply.deleteLater()
+
     def _handleResponse(self, endpoint, responseData):
-        """
-        Call this internally when a response arrives.
-        """
         self.requestFinished.emit(endpoint, responseData)
 
     def _handleError(self, endpoint, errorMessage):
-        """
-        Call this internally on network error.
-        """
         self.requestFailed.emit(endpoint, errorMessage)
