@@ -36,7 +36,6 @@ Page {
                     Layout.preferredHeight: run.height
                     model: [
                         "Disease Frequency",
-                        "Pest Frequency",
                         "Variety Susceptibility",
                         "Infection Rate Comparison",
                         "Disease By Region",

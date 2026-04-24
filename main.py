@@ -27,10 +27,16 @@ from src.core.devices.PNDDeviceConfigurator import PNDDeviceConfigurator
 from src.core.devices.PNDTopics import PNDTopics
 from src.core.devices.DeviceState import DeviceState
 
-# NEW: Import inference modules
+# Inference modules
 from src.core.infarence.InfarenceRunner import InfarenceRunner
 from src.core.infarence.DiseaseInfoManager import DiseaseInfoManager
 from src.core.rtsp.RTSVideoOutput import RTSVideoOutput
+
+# NEW: Researcher statistics modules
+from src.core.research.ApiClient import ApiClient
+from src.core.research.DataService import DataService
+from src.core.research.StatisticalAnalyzer import StatisticalAnalyzer
+from src.core.research.FieldDataExplorer import FieldDataExplorer
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -70,7 +76,7 @@ if __name__ == "__main__":
     device_model = device_configurator.deviceModel
 
     # ======================================
-    # NEW: Initialize Inference System
+    # Initialize Inference System
     # ======================================
 
     # Initialize DiseaseInfoManager (loads language files)
@@ -85,6 +91,35 @@ if __name__ == "__main__":
     # Get available frameworks for UI
     available_frameworks = infarence_runner.available_frameworks
     print(f"Available ML frameworks: {available_frameworks}")
+
+    # ======================================
+    # NEW: Initialize Researcher Statistics System
+    # ======================================
+
+    # Create API client for researcher
+    researcher_api_client = ApiClient()
+
+    # Set the base URL for your inference server
+    researcher_api_client.setBaseUrl("http://192.168.8.130:5000/api/inference")
+
+    # Create data service with the API client
+    data_service = DataService(researcher_api_client)
+
+    # Create statistical analyzer
+    statistical_analyzer = StatisticalAnalyzer()
+
+    # Create field data explorer
+    field_data_explorer = FieldDataExplorer()
+
+    # Connect data service to analyzer (when data is fetched, load into analyzer)
+    data_service.inferencesFetched.connect(statistical_analyzer.loadInferences)
+
+    # Connect data service to field data explorer
+    data_service.inferencesFetched.connect(field_data_explorer.loadFieldData)
+
+    # Optional: Connect error handling
+    data_service.errorOccurred.connect(lambda msg: print(f"Data Service Error: {msg}"))
+    statistical_analyzer.analysisError.connect(lambda name, msg: print(f"Analysis Error ({name}): {msg}"))
 
     # ======================================
     # Expose Objects to QML
@@ -105,12 +140,20 @@ if __name__ == "__main__":
     engine.rootContext().setContextProperty("MQTTClient", mqtt_client)
     engine.rootContext().setContextProperty("DeviceState", DeviceState)
 
-    # NEW: Inference system exports
+    # Inference system exports
     engine.rootContext().setContextProperty("InfarenceRunner", infarence_runner)
     engine.rootContext().setContextProperty("DiseaseInfoManager", disease_info_manager)
     engine.rootContext().setContextProperty("AvailableFrameworks", available_frameworks)
 
-    # rtsp system
+    # NEW: Researcher statistics exports
+    engine.rootContext().setContextProperty("ResearcherApiClient", researcher_api_client)
+    engine.rootContext().setContextProperty("ResearcherDataService", data_service)
+    engine.rootContext().setContextProperty("StatisticalAnalyzer", statistical_analyzer)
+    engine.rootContext().setContextProperty("InferenceListModel", statistical_analyzer.listModel)
+    engine.rootContext().setContextProperty("FieldDataExplorer", field_data_explorer)
+    engine.rootContext().setContextProperty("FieldDataset", field_data_explorer.dataset)
+
+    # RTSP system
     qmlRegisterType(RTSVideoOutput, "RTSVideoOutput", 1, 0, "RTSVideoOutput")
 
     # ======================================
