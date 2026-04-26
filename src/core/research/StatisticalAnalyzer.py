@@ -1,6 +1,6 @@
 # This Python file uses the following encoding: utf-8
 
-from PySide6.QtCore import QObject, Slot, Signal, Property, QAbstractListModel, QModelIndex, Qt, QByteArray
+from PySide6.QtCore import QObject, Slot, Signal, Property, QAbstractListModel, QModelIndex, Qt
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -9,98 +9,303 @@ import csv
 import os
 
 
-class InferenceListModel(QAbstractListModel):
-    """List model for displaying inferences in QML"""
+# =======================================================
+# PLOT MODELS FOR QML VISUALIZATION
+# =======================================================
 
-    # Define roles
-    LocationRole = Qt.UserRole + 1
-    DiseaseNameRole = Qt.UserRole + 2
-    ConfidenceRole = Qt.UserRole + 3
-    VarietyRole = Qt.UserRole + 4
-    TimestampRole = Qt.UserRole + 5
+class BasePlotModel(QAbstractListModel):
+    """Base class for all plot models"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._inferences = []
+        self._data = []
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self._data)
+
+    def setDataList(self, data):
+        self.beginResetModel()
+        self._data = data
+        self.endResetModel()
+
+    def getDataList(self):
+        return self._data
+
+
+class BarDataModel(BasePlotModel):
+    RowRole = Qt.UserRole + 1
+    ColumnRole = Qt.UserRole + 2
+    ValueRole = Qt.UserRole + 3
 
     def roleNames(self):
         return {
-            self.LocationRole: b"location",
-            self.DiseaseNameRole: b"diseaseName",
-            self.ConfidenceRole: b"confidence",
-            self.VarietyRole: b"variety",
-            self.TimestampRole: b"timestamp"
+            self.RowRole: b"row",
+            self.ColumnRole: b"column",
+            self.ValueRole: b"value",
         }
 
-    def data(self, index, role=Qt.DisplayRole):
-        if not index.isValid() or index.row() >= len(self._inferences):
+    def data(self, index, role):
+        if not index.isValid() or index.row() >= len(self._data):
             return None
 
-        inference = self._inferences[index.row()]
-
-        if role == self.LocationRole:
-            return inference.get("location", "")
-        elif role == self.DiseaseNameRole:
-            return inference.get("diseasname", inference.get("diseaseName", ""))
-        elif role == self.ConfidenceRole:
-            return inference.get("confidence", 0.0)
-        elif role == self.VarietyRole:
-            return inference.get("variaty", inference.get("variety", ""))
-        elif role == self.TimestampRole:
-            return inference.get("timestamp", "")
-
+        item = self._data[index.row()]
+        if role == self.RowRole:
+            return item.get("row", "")
+        if role == self.ColumnRole:
+            return item.get("column", "")
+        if role == self.ValueRole or role == Qt.DisplayRole:
+            return item.get("value", 0)
         return None
 
-    def rowCount(self, parent=QModelIndex()):
-        return len(self._inferences)
 
-    @Slot(list)
-    def setInferences(self, inferences):
-        self.beginResetModel()
-        self._inferences = inferences
-        self.endResetModel()
+class ScatterDataModel(BasePlotModel):
+    """Model for scatter plot data - exposes x, y, z roles"""
 
-    def getInferences(self):
-        return self._inferences
+    XRole = Qt.UserRole + 1
+    YRole = Qt.UserRole + 2
+    ZRole = Qt.UserRole + 3
+    LabelRole = Qt.UserRole + 4
+
+    def roleNames(self):
+        return {
+            self.XRole: b"x",
+            self.YRole: b"y",
+            self.ZRole: b"z",
+            self.LabelRole: b"label",
+        }
+
+    def data(self, index, role):
+        if not index.isValid() or index.row() >= len(self._data):
+            return None
+
+        item = self._data[index.row()]
+        if role == self.XRole:
+            return item.get("x", 0)
+        if role == self.YRole:
+            return item.get("y", 0)
+        if role == self.ZRole:
+            return item.get("z", 0)
+        if role == self.LabelRole:
+            return item.get("label", "")
+        return None
+
+
+class SurfaceDataModel(BasePlotModel):
+    """Model for surface/3D chart data - exposes row, column, value roles"""
+
+    RowRole = Qt.UserRole + 1
+    ColumnRole = Qt.UserRole + 2
+    ValueRole = Qt.UserRole + 3
+
+    def roleNames(self):
+        return {
+            self.RowRole: b"row",
+            self.ColumnRole: b"column",
+            self.ValueRole: b"value",
+        }
+
+    def data(self, index, role):
+        if not index.isValid() or index.row() >= len(self._data):
+            return None
+
+        item = self._data[index.row()]
+        if role == self.RowRole:
+            return item.get("row", "")
+        if role == self.ColumnRole:
+            return item.get("column", "")
+        if role == self.ValueRole:
+            return item.get("value", 0)
+        return None
+
+
+class PlotDataModel(QObject):
+    """
+    PlotModel - Modified by StatisticalAnalyzer for 3D plotting
+    Provides formatted data for bar, surface, and scatter charts
+    """
+
+    # =======================================================
+    # Signals
+    # =======================================================
+    plotDataChanged = Signal()
+    chartTypeChanged = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._currentChartType = "bar"  # bar, surface, scatter
+        self._plotData = {
+            "bar": {},
+            "surface": {},
+            "scatter": {}
+        }
+
+        # Initialize the detailed models for QML
+        self._barModel = BarDataModel(self)
+        self._scatterModel = ScatterDataModel(self)
+        self._surfaceModel = SurfaceDataModel(self)
+
+    # =======================================================
+    # Properties
+    # =======================================================
+    @Property(str, notify=chartTypeChanged)
+    def chartType(self):
+        return self._currentChartType
+
+    @chartType.setter
+    def chartType(self, value):
+        if self._currentChartType != value:
+            self._currentChartType = value
+            self.chartTypeChanged.emit()
+
+    @Property("QVariantMap", notify=plotDataChanged)
+    def barData(self):
+        return self._plotData.get("bar", {})
+
+    @Property("QVariantMap", notify=plotDataChanged)
+    def surfaceData(self):
+        return self._plotData.get("surface", {})
+
+    @Property("QVariantMap", notify=plotDataChanged)
+    def scatterData(self):
+        return self._plotData.get("scatter", {})
+
+    # Expose the detailed models to QML
+    @Property(QObject, constant=True)
+    def barModel(self):
+        return self._barModel
+
+    @Property(QObject, constant=True)
+    def scatterModel(self):
+        return self._scatterModel
+
+    @Property(QObject, constant=True)
+    def surfaceModel(self):
+        return self._surfaceModel
+
+    # =======================================================
+    # Public Methods
+    # =======================================================
+    @Slot(str, "QVariant")
+    def setPlotData(self, chartType, data):
+        """Set plot data for a specific chart type"""
+        if chartType in self._plotData:
+            self._plotData[chartType] = data
+            self.plotDataChanged.emit()
+            print(f"[PlotModel] Updated {chartType} chart data")
+
+            # Update the corresponding detailed model
+            self._updateDetailedModel(chartType, data)
+
+    @Slot(str, result="QVariant")
+    def getPlotData(self, chartType):
+        """Get plot data for a specific chart type"""
+        return self._plotData.get(chartType, {})
+
+    @Slot()
+    def clear(self):
+        """Clear all plot data"""
+        self._plotData = {
+            "bar": {},
+            "surface": {},
+            "scatter": {}
+        }
+        self._barModel.setDataList([])
+        self._scatterModel.setDataList([])
+        self._surfaceModel.setDataList([])
+        self.plotDataChanged.emit()
+
+    # =======================================================
+    # Internal Methods
+    # =======================================================
+    def _updateDetailedModel(self, chartType, data):
+        """Update the detailed model based on chart type"""
+        if chartType == "bar" and "categories" in data and "values" in data:
+            # Convert to row/column format for bar model
+            rows = []
+            for i, (category, value) in enumerate(zip(data["categories"], data["values"])):
+                rows.append({
+                    "row": category,
+                    "column": "Value",
+                    "value": value
+                })
+            self._barModel.setDataList(rows)
+            print(f"[PlotModel] Updated bar model with {len(rows)} items")
+
+        elif chartType == "scatter" and "points" in data:
+            # Convert points to scatter model format
+            points_data = []
+            for point in data["points"]:
+                points_data.append({
+                    "x": point.get("x", 0),
+                    "y": point.get("y", 0),
+                    "z": point.get("z", point.get("count", 1)),
+                    "label": point.get("label", "")
+                })
+            self._scatterModel.setDataList(points_data)
+            print(f"[PlotModel] Updated scatter model with {len(points_data)} points")
+
+        elif chartType == "surface":
+            if "surfaceData" in data:
+                formatted_data = []
+                for item in data["surfaceData"]:
+                    formatted_data.append({
+                        "row": float(item.get("row", 0)),
+                        "column": float(item.get("column", 0)),
+                        "value": float(item.get("value", 0))
+                    })
+                self._surfaceModel.setDataList(formatted_data)
+                print(f"[PlotModel] Updated surface model with {len(formatted_data)} points")
+            else:
+                print(f"[PlotModel] Warning: No surfaceData found")
 
 
 class StatisticalAnalyzer(QObject):
+    """
+    StatisticalAnalyzer - Runs different statistics
+    Reads from FieldDataset (single source of truth)
+    Updates PlotDataModel with plotable data for 3D visualization
+    """
+
     # =======================================================
     # Signals
     # =======================================================
     datasetChanged = Signal()
     resultsChanged = Signal()
     analysisStarted = Signal(str)
-    analysisCompleted = Signal(str, object)  # Added result parameter
+    analysisCompleted = Signal(str, object)
     reportGenerated = Signal(str)
     reportFailed = Signal(str)
-    analysisError = Signal(str, str)  # analysis name, error message
+    analysisError = Signal(str, str)
 
     # =======================================================
     # Init
     # =======================================================
-    def __init__(self, parent=None):
+    def __init__(self, fieldDataset=None, plotModel=None, parent=None):
         super().__init__(parent)
-        self._inferences = []
+        self._fieldDataset = fieldDataset  # Single source of truth
+        self._plotModel = plotModel        # Plot model for visualization
         self._results = {}
-        self._listModel = InferenceListModel(self)
         self._exportDir = Path.home() / "Documents" / "PlantLab"
         self._ensureExportDirectory()
+
+        # Connect to dataset changes
+        if self._fieldDataset:
+            self._fieldDataset.dataChanged.connect(self._onDatasetChanged)
 
     # =======================================================
     # Properties
     # =======================================================
-    @Property(QObject, notify=datasetChanged)
-    def listModel(self):
-        return self._listModel
-
     @Property(int, notify=resultsChanged)
-    def getResultsCount(self):
+    def resultsCount(self):
         return len(self._results)
 
     @Property(str, constant=True)
     def exportDirectory(self):
         return str(self._exportDir)
+
+    @Property(QObject, constant=True)
+    def plotModel(self):
+        return self._plotModel
 
     # =======================================================
     # Internal Methods
@@ -109,104 +314,190 @@ class StatisticalAnalyzer(QObject):
         """Ensure the export directory exists"""
         try:
             self._exportDir.mkdir(parents=True, exist_ok=True)
-            print(f"Export directory ready: {self._exportDir}")
+            print(f"[StatisticalAnalyzer] Export directory ready: {self._exportDir}")
         except Exception as e:
-            print(f"Error creating export directory: {e}")
+            print(f"[StatisticalAnalyzer] Error creating export directory: {e}")
+
+    def _getRecords(self):
+        """Get records from single source of truth (FieldDataset)"""
+        if self._fieldDataset:
+            return self._fieldDataset.getRecords()
+        return []
 
     def _storeResult(self, resultId, value):
-        if self._results.get(resultId) == value:
-            return
+        """Store analysis result"""
         self._results[resultId] = value
         self.resultsChanged.emit()
 
-    def _getRecords(self):
-        """Get records as list of dicts"""
-        return self._listModel.getInferences()
+    def _onDatasetChanged(self):
+        """React to changes in source of truth"""
+        self.datasetChanged.emit()
+        print("[StatisticalAnalyzer] Source data changed")
 
     # =======================================================
     # Dataset Management
     # =======================================================
-    @Slot(list)
-    def loadInferences(self, inferences):
-        """
-        Load inferences from backend
-        """
-        self._inferences = inferences
-        self._listModel.setInferences(inferences)
-        self.datasetChanged.emit()
-        print(f"Loaded {len(inferences)} inferences")
+    @Slot()
+    def refreshFromSource(self):
+        """Refresh all analyses from current source data"""
+        print("[StatisticalAnalyzer] Refreshing all analyses from source")
+        self.runAllAnalyses()
 
     @Slot()
     def clearResults(self):
-        if not self._results:
-            return
+        """Clear all stored results"""
         self._results.clear()
         self.resultsChanged.emit()
+        if self._plotModel:
+            self._plotModel.clear()
 
     # =======================================================
-    # 1. Disease Frequency Analysis
+    # Analysis Methods (callable from QML)
+    # =======================================================
+    @Slot(str)
+    def runAnalysis(self, analysisName):
+        """Main slot called from QML to run an analysis"""
+        print(f"[StatisticalAnalyzer] runAnalysis called with: {analysisName}")
+
+        analysis_map = {
+            "Disease Frequency": self.computeDiseaseFrequency,
+            "Variety Susceptibility": self.computeVarietySusceptibility,
+            "Infection Rate Comparison": self.computeInfectionRateComparison,
+            "Disease By Region": self.computeDiseaseByRegion
+        }
+
+        if analysisName in analysis_map:
+            analysis_map[analysisName]()
+        else:
+            error_msg = f"Unknown analysis: {analysisName}"
+            print(f"[StatisticalAnalyzer] {error_msg}")
+            self.analysisError.emit(analysisName, error_msg)
+
+    @Slot(str)
+    def runSingleAnalysis(self, analysisName):
+        """Alternative slot for running a single analysis"""
+        self.runAnalysis(analysisName)
+
+    # =======================================================
+    # 1. Disease Frequency Analysis -> BAR CHART
     # =======================================================
     @Slot()
     def computeDiseaseFrequency(self):
-        self.analysisStarted.emit("disease_frequency")
+        """
+        Disease Frequency Analysis
+        Returns plotable data for Bar Chart
+        """
+        analysis_name = "Disease Frequency"
+        print(f"[StatisticalAnalyzer] Starting {analysis_name}")
+        self.analysisStarted.emit(analysis_name)
+
         try:
             records = self._getRecords()
             if not records:
-                self.analysisError.emit("disease_frequency", "No data available")
+                self.analysisError.emit(analysis_name, "No data available")
                 return
 
             disease_counts = Counter()
             for record in records:
-                disease = record.get("diseasname", record.get("diseaseName", "Unknown"))
+                disease = record.get("diseasname", "Unknown")
                 disease_counts[disease] += 1
 
             total = len(records)
+
+            # Prepare result
+            diseases_list = []
+            for name, count in disease_counts.most_common():
+                diseases_list.append({
+                    "name": name,
+                    "count": count,
+                    "percentage": round((count / total) * 100, 2)
+                })
+
             result = {
+                "analysis_type": analysis_name,
                 "total_records": total,
-                "diseases": [
-                    {"name": name, "count": count, "percentage": (count/total)*100}
-                    for name, count in disease_counts.most_common()
-                ]
+                "diseases": diseases_list
             }
 
+            # Prepare plotable data for Bar Chart
+            if self._plotModel:
+                plot_data = {
+                    "title": "Disease Frequency Distribution",
+                    "xAxis": "Disease",
+                    "yAxis": "Frequency",
+                    "categories": [d["name"] for d in diseases_list],
+                    "values": [d["count"] for d in diseases_list],
+                    "percentages": [d["percentage"] for d in diseases_list]
+                }
+                self._plotModel.setPlotData("bar", plot_data)
+
             self._storeResult("disease_frequency", result)
-            self.analysisCompleted.emit("disease_frequency", result)
+            self.analysisCompleted.emit(analysis_name, result)
+            print(f"[StatisticalAnalyzer] Completed {analysis_name}")
 
         except Exception as e:
-            self.analysisError.emit("disease_frequency", str(e))
+            self.analysisError.emit(analysis_name, str(e))
+            print(f"[StatisticalAnalyzer] Error in {analysis_name}: {e}")
 
     # =======================================================
-    # 2. Variety Susceptibility
+    # 2. Variety Susceptibility Analysis -> SCATTER PLOT
     # =======================================================
     @Slot()
     def computeVarietySusceptibility(self):
-        self.analysisStarted.emit("variety_susceptibility")
+        """
+        Variety Susceptibility Analysis
+        Returns plotable data for Scatter Plot
+        """
+        analysis_name = "Variety Susceptibility"
+        print(f"[StatisticalAnalyzer] Starting {analysis_name}")
+        self.analysisStarted.emit(analysis_name)
+
         try:
             records = self._getRecords()
             if not records:
-                self.analysisError.emit("variety_susceptibility", "No data available")
+                self.analysisError.emit(analysis_name, "No data available")
                 return
 
             variety_disease_map = defaultdict(lambda: Counter())
             variety_counts = Counter()
 
             for record in records:
-                variety = record.get("variaty", record.get("variety", "Unknown"))
-                disease = record.get("diseasname", record.get("diseaseName", "Unknown"))
+                variety = record.get("variaty", "Unknown")
+                disease = record.get("diseasname", "Unknown")
 
                 variety_disease_map[variety][disease] += 1
                 variety_counts[variety] += 1
 
             result = {
+                "analysis_type": analysis_name,
                 "varieties": []
             }
 
+            # Prepare scatter points
+            scatter_points = []
+
             for variety, diseases in variety_disease_map.items():
                 total_for_variety = variety_counts[variety]
-                susceptible_diseases = [
-                    {"name": name, "count": count, "percentage": (count/total_for_variety)*100}
-                    for name, count in diseases.most_common()
-                ]
+                susceptible_diseases = []
+
+                for name, count in diseases.most_common():
+                    percentage = round((count / total_for_variety) * 100, 2)
+                    susceptible_diseases.append({
+                        "name": name,
+                        "count": count,
+                        "percentage": percentage
+                    })
+
+                    # Add point for scatter plot
+                    scatter_points.append({
+                        "x": total_for_variety,
+                        "y": percentage,
+                        "z": count,
+                        "label": f"{variety} - {name}",
+                        "disease": name,
+                        "variety": variety,
+                        "count": count
+                    })
 
                 result["varieties"].append({
                     "name": variety,
@@ -214,69 +505,120 @@ class StatisticalAnalyzer(QObject):
                     "susceptible_diseases": susceptible_diseases
                 })
 
+            # Prepare plotable data for Scatter Plot
+            if self._plotModel:
+                plot_data = {
+                    "title": "Variety Susceptibility Analysis",
+                    "xAxis": "Total Infections per Variety",
+                    "yAxis": "Disease Percentage (%)",
+                    "points": scatter_points
+                }
+                self._plotModel.setPlotData("scatter", plot_data)
+
             self._storeResult("variety_susceptibility", result)
-            self.analysisCompleted.emit("variety_susceptibility", result)
+            self.analysisCompleted.emit(analysis_name, result)
+            print(f"[StatisticalAnalyzer] Completed {analysis_name}")
 
         except Exception as e:
-            self.analysisError.emit("variety_susceptibility", str(e))
+            self.analysisError.emit(analysis_name, str(e))
+            print(f"[StatisticalAnalyzer] Error in {analysis_name}: {e}")
 
     # =======================================================
-    # 3. Infection Rate Comparison (by variety)
+    # 3. Infection Rate Comparison -> BAR CHART
     # =======================================================
     @Slot()
     def computeInfectionRateComparison(self):
-        self.analysisStarted.emit("infection_rate_comparison")
+        """
+        Infection Rate Comparison Analysis
+        Compares infection rates across varieties
+        """
+        analysis_name = "Infection Rate Comparison"
+        print(f"[StatisticalAnalyzer] Starting {analysis_name}")
+        self.analysisStarted.emit(analysis_name)
+
         try:
             records = self._getRecords()
             if not records:
-                self.analysisError.emit("infection_rate_comparison", "No data available")
+                self.analysisError.emit(analysis_name, "No data available")
                 return
 
-            # Group by variety and disease
+            # Group by variety
             variety_infection_rates = defaultdict(lambda: {"total": 0, "diseases": Counter()})
 
             for record in records:
-                variety = record.get("variaty", record.get("variety", "Unknown"))
-                disease = record.get("diseasname", record.get("diseaseName", "Unknown"))
+                variety = record.get("variaty", "Unknown")
+                disease = record.get("diseasname", "Unknown")
 
                 variety_infection_rates[variety]["total"] += 1
                 variety_infection_rates[variety]["diseases"][disease] += 1
 
             result = {
+                "analysis_type": analysis_name,
                 "varieties": []
             }
 
+            comparison_data = []
+
             for variety, data in variety_infection_rates.items():
                 total = data["total"]
+                comparison_data.append({
+                    "variety": variety,
+                    "total_infections": total
+                })
+
                 result["varieties"].append({
                     "name": variety,
                     "total_infections": total,
-                    "infection_rate": total,  # Raw count
+                    "infection_rate": total,
                     "disease_breakdown": [
-                        {"name": name, "count": count, "percentage": (count/total)*100}
+                        {
+                            "name": name,
+                            "count": count,
+                            "percentage": round((count / total) * 100, 2)
+                        }
                         for name, count in data["diseases"].most_common()
                     ]
                 })
 
             # Sort by infection rate (highest first)
-            result["varieties"].sort(key=lambda x: x["total_infections"], reverse=True)
+            comparison_data.sort(key=lambda x: x["total_infections"], reverse=True)
+
+            # Prepare plotable data for Bar Chart
+            if self._plotModel:
+                plot_data = {
+                    "title": "Infection Rate by Variety",
+                    "xAxis": "Variety",
+                    "yAxis": "Total Infections",
+                    "categories": [item["variety"] for item in comparison_data],
+                    "values": [item["total_infections"] for item in comparison_data]
+                }
+                self._plotModel.setPlotData("bar", plot_data)
 
             self._storeResult("infection_rate_comparison", result)
-            self.analysisCompleted.emit("infection_rate_comparison", result)
+            self.analysisCompleted.emit(analysis_name, result)
+            print(f"[StatisticalAnalyzer] Completed {analysis_name}")
 
         except Exception as e:
-            self.analysisError.emit("infection_rate_comparison", str(e))
+            self.analysisError.emit(analysis_name, str(e))
+            print(f"[StatisticalAnalyzer] Error in {analysis_name}: {e}")
 
     # =======================================================
-    # 4. Disease By Region (Geographic Analysis)
+    # 4. Disease By Region -> SURFACE/3D PLOT
     # =======================================================
     @Slot()
     def computeDiseaseByRegion(self):
-        self.analysisStarted.emit("disease_by_region")
+        """
+        Disease By Region Analysis
+        Returns plotable data for Surface/3D Chart
+        """
+        analysis_name = "Disease By Region"
+        print(f"[StatisticalAnalyzer] Starting {analysis_name}")
+        self.analysisStarted.emit(analysis_name)
+
         try:
             records = self._getRecords()
             if not records:
-                self.analysisError.emit("disease_by_region", "No data available")
+                self.analysisError.emit(analysis_name, "No data available")
                 return
 
             region_disease_map = defaultdict(lambda: Counter())
@@ -284,82 +626,73 @@ class StatisticalAnalyzer(QObject):
 
             for record in records:
                 location = record.get("location", "Unknown")
-                disease = record.get("diseasname", record.get("diseaseName", "Unknown"))
-
+                disease = record.get("diseasname", "Unknown")
                 region_disease_map[location][disease] += 1
                 region_counts[location] += 1
 
+            # Get sorted lists
+            regions_list = sorted(region_disease_map.keys())
+            all_diseases = set()
+            for diseases in region_disease_map.values():
+                all_diseases.update(diseases.keys())
+            diseases_list = sorted(list(all_diseases))
+
+            # Build complete grid data (every region-disease combination)
+            surface_data = []
+            for region_idx, region in enumerate(regions_list):
+                diseases = region_disease_map[region]
+                for disease_idx, disease in enumerate(diseases_list):
+                    count = diseases.get(disease, 0)
+                    surface_data.append({
+                        "row": float(region_idx),
+                        "column": float(disease_idx),
+                        "value": float(count)
+                    })
+
+            # Prepare result
             result = {
-                "regions": []
+                "analysis_type": analysis_name,
+                "total_records": len(records),
+                "total_regions": len(regions_list),
+                "total_diseases": len(diseases_list),
+                "regions": regions_list,
+                "diseases": diseases_list,
+                "regions_detail": []
             }
 
             for region, diseases in region_disease_map.items():
                 total_for_region = region_counts[region]
-                result["regions"].append({
+                region_diseases_data = []
+                for disease, count in diseases.items():
+                    region_diseases_data.append({
+                        "name": disease,
+                        "count": count,
+                        "percentage": round((count / total_for_region) * 100, 2)
+                    })
+                result["regions_detail"].append({
                     "name": region,
                     "total_infections": total_for_region,
-                    "diseases": [
-                        {"name": name, "count": count, "percentage": (count/total_for_region)*100}
-                        for name, count in diseases.most_common()
-                    ]
+                    "diseases": region_diseases_data
                 })
+
+            # Update plot model
+            if self._plotModel:
+                plot_data = {
+                    "title": "Disease Distribution by Region",
+                    "xAxis": "Regions",
+                    "yAxis": "Diseases",
+                    "zAxis": "Number of Infections",
+                    "surfaceData": surface_data
+                }
+                self._plotModel.setPlotData("surface", plot_data)
 
             self._storeResult("disease_by_region", result)
-            self.analysisCompleted.emit("disease_by_region", result)
+            self.analysisCompleted.emit(analysis_name, result)
+            print(f"[StatisticalAnalyzer] Completed with {len(surface_data)} points ({len(regions_list)} regions × {len(diseases_list)} diseases)")
 
         except Exception as e:
-            self.analysisError.emit("disease_by_region", str(e))
-
-    # =======================================================
-    # 5. Improvement Dataset (For model training)
-    # =======================================================
-    @Slot()
-    def generateImprovementDataset(self):
-        self.analysisStarted.emit("improvement_dataset")
-        try:
-            records = self._getRecords()
-            if not records:
-                self.analysisError.emit("improvement_dataset", "No data available")
-                return
-
-            # Prepare dataset for model improvement
-            improvement_data = []
-            confidence_distribution = {"0-0.5": 0, "0.5-0.7": 0, "0.7-0.9": 0, "0.9-1.0": 0}
-
-            for record in records:
-                confidence = record.get("confidence", 0)
-
-                # Categorize confidence
-                if confidence < 0.5:
-                    confidence_distribution["0-0.5"] += 1
-                elif confidence < 0.7:
-                    confidence_distribution["0.5-0.7"] += 1
-                elif confidence < 0.9:
-                    confidence_distribution["0.7-0.9"] += 1
-                else:
-                    confidence_distribution["0.9-1.0"] += 1
-
-                improvement_data.append({
-                    "disease": record.get("diseasname", record.get("diseaseName", "Unknown")),
-                    "confidence": confidence,
-                    "location": record.get("location", "Unknown"),
-                    "variety": record.get("variaty", record.get("variety", "Unknown")),
-                    "timestamp": record.get("timestamp", "")
-                })
-
-            result = {
-                "total_records": len(records),
-                "confidence_distribution": confidence_distribution,
-                "low_confidence_records": [r for r in improvement_data if r["confidence"] < 0.7],
-                "high_confidence_records": [r for r in improvement_data if r["confidence"] >= 0.9],
-                "training_data": improvement_data
-            }
-
-            self._storeResult("improvement_dataset", result)
-            self.analysisCompleted.emit("improvement_dataset", result)
-
-        except Exception as e:
-            self.analysisError.emit("improvement_dataset", str(e))
+            self.analysisError.emit(analysis_name, str(e))
+            print(f"[StatisticalAnalyzer] Error: {e}")
 
     # =======================================================
     # Run All Analyses
@@ -368,32 +701,45 @@ class StatisticalAnalyzer(QObject):
     def runAllAnalyses(self):
         """
         Run all statistical analyses
+        Each analysis updates the PlotModel with chart-specific data
         """
+        print("[StatisticalAnalyzer] Running all analyses...")
         self.computeDiseaseFrequency()
         self.computeVarietySusceptibility()
         self.computeInfectionRateComparison()
         self.computeDiseaseByRegion()
-        self.generateImprovementDataset()
 
     # =======================================================
     # Result Access
     # =======================================================
     @Slot(str, result="QVariant")
     def getResult(self, resultId):
+        """Get analysis result by ID"""
         return self._results.get(resultId)
 
     @Slot(result="QVariantMap")
     def getAllResults(self):
+        """Get all analysis results"""
         return self._results.copy()
 
+    @Slot()
+    def refreshCurrentChart(self):
+        """Refresh the current chart based on last analysis"""
+        if "disease_frequency" in self._results:
+            self.computeDiseaseFrequency()
+        elif "variety_susceptibility" in self._results:
+            self.computeVarietySusceptibility()
+        elif "infection_rate_comparison" in self._results:
+            self.computeInfectionRateComparison()
+        elif "disease_by_region" in self._results:
+            self.computeDiseaseByRegion()
+
     # =======================================================
-    # Reporting with Export to ~/Documents/PlantLab
+    # Reporting
     # =======================================================
     @Slot(str)
     def exportAnalysisReport(self, formatType):
-        """
-        Export analysis report to ~/Documents/PlantLab directory
-        """
+        """Export analysis report to ~/Documents/PlantLab directory"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -408,61 +754,37 @@ class StatisticalAnalyzer(QObject):
                 filepath = self._exportDir / filename
                 with open(filepath, 'w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f)
-                    writer.writerow(["Analysis Type", "Result Summary"])
+                    writer.writerow(["Analysis Type", "Key Findings"])
                     for key, value in self._results.items():
-                        # Convert result to string summary
-                        if isinstance(value, dict):
-                            summary = str(value)[:200] + "..." if len(str(value)) > 200 else str(value)
-                        else:
-                            summary = str(value)[:200]
+                        summary = self._generateSummary(value)
                         writer.writerow([key, summary])
 
-            elif formatType.lower() == "txt":
-                filename = f"analysis_report_{timestamp}.txt"
-                filepath = self._exportDir / filename
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write("PLANT DOCTOR - STATISTICAL ANALYSIS REPORT\n")
-                    f.write("=" * 50 + "\n")
-                    f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                    f.write(f"Total Records: {len(self._inferences)}\n")
-                    f.write("=" * 50 + "\n\n")
-
-                    for key, value in self._results.items():
-                        f.write(f"\n{key.upper()}\n")
-                        f.write("-" * 30 + "\n")
-                        f.write(json.dumps(value, indent=2, default=str))
-                        f.write("\n\n")
             else:
                 self.reportFailed.emit(f"Unsupported format: {formatType}")
                 return
 
             self.reportGenerated.emit(str(filepath))
-            print(f"Report exported to: {filepath}")
+            print(f"[StatisticalAnalyzer] Report exported to: {filepath}")
 
         except Exception as e:
             error_msg = f"Export failed: {str(e)}"
             print(error_msg)
             self.reportFailed.emit(error_msg)
 
-    @Slot(result=str)
-    def getExportDirectory(self):
-        """Get the export directory path"""
-        return str(self._exportDir)
+    def _generateSummary(self, result):
+        """Generate a text summary from analysis result"""
+        if not isinstance(result, dict):
+            return str(result)[:200]
 
-    @Slot(result=bool)
-    def openExportDirectory(self):
-        """Open the export directory in file explorer"""
-        import subprocess
-        import platform
+        if "analysis_type" in result:
+            if "diseases" in result:
+                top_diseases = result["diseases"][:3]
+                return f"Top diseases: {', '.join([d['name'] for d in top_diseases])}"
 
-        try:
-            if platform.system() == "Windows":
-                subprocess.run(["explorer", str(self._exportDir)])
-            elif platform.system() == "Darwin":  # macOS
-                subprocess.run(["open", str(self._exportDir)])
-            else:  # Linux
-                subprocess.run(["xdg-open", str(self._exportDir)])
-            return True
-        except Exception as e:
-            print(f"Error opening directory: {e}")
-            return False
+            if "varieties" in result:
+                return f"Analyzed {len(result['varieties'])} varieties"
+
+            if "regions" in result:
+                return f"Analyzed {len(result['regions'])} regions"
+
+        return str(result)[:200]
