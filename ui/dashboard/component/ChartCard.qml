@@ -7,9 +7,10 @@ Rectangle {
     id: root
     Layout.fillWidth: true
     Layout.fillHeight: true
-
     property string title: "Pest & Disease Frequency"
-    property var chartData: [12, 19, 7, 10, 15, 8, 14, 11, 18, 6]  // 10 records
+    property var chartData: [12, 19, 7, 10, 15, 8, 14, 11, 18, 6]
+    property var categories: ["Aphids", "Armyworm", "Blight", "Rust", "Mite",
+                              "Weevil", "Mildew", "Smut", "Leaf Spot", "Anthracnose"]
 
     color: "#ffffff"
     radius: 14
@@ -17,13 +18,14 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 6
+        anchors.margins: 12
+        spacing: 8
 
         Label {
             text: root.title
             font.bold: true
             font.pixelSize: 16
+            color: "#1f2937"
         }
 
         ChartView {
@@ -33,29 +35,44 @@ Rectangle {
             antialiasing: true
             legend.visible: false
             backgroundColor: "transparent"
-
-            // Enable default animation for BarSeries
             animationOptions: ChartView.SeriesAnimations
             animationDuration: 800
-            animationEasingCurve: Easing.InOutQuad
+
+            // X Axis - Category Axis (for disease names)
+            BarCategoryAxis {
+                id: axisX
+                categories: root.categories
+                labelsAngle: -45
+                labelsFont.pixelSize: 11
+                titleText: "Pest / Disease"
+            }
+
+            // Y Axis - Value Axis
+            ValueAxis {
+                id: axisY
+                min: 0
+                max: 25
+                titleText: "Cases Detected"
+                labelsColor: "#6b7280"
+                gridVisible: true
+                gridLineColor: "#e5e7eb"
+            }
 
             BarSeries {
                 id: barSeries
-                axisX: BarCategoryAxis {
-                    categories: ["Aphids", "Armyworm", "Blight", "Rust", "Mite",
-                                 "Weevil", "Mildew", "Smut", "Leaf Spot", "Anthracnose"]
-                }
-                barWidth: 0.5  // Medium bar width
+                axisX: axisX          // Correct way to link
+                axisY: axisY          // Correct way to link
+                barWidth: 0.6
 
                 BarSet {
                     id: barSet
                     label: "Detected Cases"
-                    values: chartData
+                    values: root.chartData
                     color: "#8BC34A"
                     borderColor: "#059669"
-                    borderWidth: 0
+                    borderWidth: 1
 
-                    // Smooth animation on value changes
+                    // Smooth animation when values change
                     Behavior on values {
                         NumberAnimation {
                             duration: 600
@@ -64,20 +81,10 @@ Rectangle {
                     }
                 }
             }
-
-            ValueAxis {
-                id: valueAxis
-                min: 0
-                max: 25
-                titleText: "Cases Detected"
-                labelsColor: "#6b7280"
-                gridVisible: true
-                gridLineColor: "#e5e7eb"
-            }
         }
     }
 
     Component.onCompleted: {
-        chartView.update(); // Trigger the initial animation
+        chartView.update()
     }
 }

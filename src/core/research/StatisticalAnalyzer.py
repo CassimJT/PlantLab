@@ -118,10 +118,168 @@ class SurfaceDataModel(BasePlotModel):
         return None
 
 
+# =======================================================
+# CHART MAPPER ADAPTER LAYER - For 2D Charts
+# =======================================================
+
+class ChartMapper(QObject):
+    """
+    Adapter class that converts model data into formats suitable for 2D charts.
+    Acts as a bridge between your data models and Qt Charts components.
+    """
+
+    # Signals for chart data changes
+    barDataChanged = Signal()
+    lineDataChanged = Signal()
+    scatterDataChanged = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._barCategories = []
+        self._barValues = []
+        self._barSeriesName = ""
+
+        self._lineSeries = []
+        self._lineCategories = []
+
+        self._scatterPoints = []
+
+    # =======================================================
+    # Properties for Bar Chart
+    # =======================================================
+    @Property("QVariantList", notify=barDataChanged)
+    def barCategories(self):
+        """Returns categories for bar chart X-axis"""
+        return self._barCategories
+
+    @Property("QVariantList", notify=barDataChanged)
+    def barValues(self):
+        """Returns values for bar chart"""
+        return self._barValues
+
+    @Property(str, notify=barDataChanged)
+    def barSeriesName(self):
+        """Returns the series name for the bar chart"""
+        return self._barSeriesName
+
+    @Property(int, notify=barDataChanged)
+    def barCount(self):
+        """Returns number of bars"""
+        return len(self._barValues)
+
+    # =======================================================
+    # Properties for Line Chart
+    # =======================================================
+    @Property("QVariantList", notify=lineDataChanged)
+    def lineSeries(self):
+        """Returns list of line series: each with 'name' and 'points'"""
+        return self._lineSeries
+
+    @Property("QVariantList", notify=lineDataChanged)
+    def lineCategories(self):
+        """Returns X-axis categories for line chart"""
+        return self._lineCategories
+
+    @Property(int, notify=lineDataChanged)
+    def lineSeriesCount(self):
+        """Returns number of line series"""
+        return len(self._lineSeries)
+
+    # =======================================================
+    # Properties for Scatter Chart
+    # =======================================================
+    @Property("QVariantList", notify=scatterDataChanged)
+    def scatterPoints(self):
+        """Returns list of (x, y) points for scatter chart"""
+        return self._scatterPoints
+
+    @Property(int, notify=scatterDataChanged)
+    def scatterCount(self):
+        """Returns number of scatter points"""
+        return len(self._scatterPoints)
+
+    # =======================================================
+    # Public Methods
+    # =======================================================
+    @Slot("QVariantMap")
+    def updateFromAnalysisResult(self, result):
+        """
+        Main method to update charts from analysis result.
+        Call this after any analysis completes.
+        """
+        if not result:
+            return
+
+        analysis_type = result.get("analysis_type", "")
+        print(f"[ChartMapper] Updating from analysis: {analysis_type}")
+
+        if analysis_type == "Disease Frequency":
+            # Update bar chart
+            diseases = result.get("diseases", [])
+            self._barCategories = [d["name"] for d in diseases]
+            self._barValues = [d["count"] for d in diseases]
+            self._barSeriesName = "Disease Frequency"
+            self.barDataChanged.emit()
+            print(f"[ChartMapper] Bar chart updated: {len(self._barCategories)} diseases")
+
+        elif analysis_type == "Infection Rate Comparison":
+            # Update bar chart with variety data
+            varieties = result.get("varieties", [])
+            self._barCategories = [v["name"] for v in varieties]
+            self._barValues = [v["total_infections"] for v in varieties]
+            self._barSeriesName = "Infection Rate by Variety"
+            self.barDataChanged.emit()
+            print(f"[ChartMapper] Bar chart updated: {len(self._barCategories)} varieties")
+
+        elif analysis_type == "Variety Susceptibility":
+            # Update scatter chart
+            varieties = result.get("varieties", [])
+            points = []
+            for variety in varieties:
+                for disease in variety.get("susceptible_diseases", []):
+                    points.append({
+                        "x": float(variety.get("total_infections", 0)),
+                        "y": float(disease.get("percentage", 0))
+                    })
+            self._scatterPoints = points
+            self.scatterDataChanged.emit()
+            print(f"[ChartMapper] Scatter chart updated: {len(points)} points")
+
+        elif analysis_type == "Disease By Region":
+            lines_data = result.get("lines_data", [])
+            self._lineSeries = []
+            for line in lines_data:
+                points = []
+                for p in line.get("points", []):
+                    points.append({"x": p.get("x", 0), "y": p.get("y", 0)})
+                self._lineSeries.append({
+                    "name": line.get("name", ""),
+                    "points": points
+                })
+            # Add this line - set line categories
+            self._lineCategories = result.get("regions", [])
+            self.lineDataChanged.emit()
+            print(f"[ChartMapper] Line chart updated: {len(self._lineSeries)} disease lines")
+
+    @Slot()
+    def clear(self):
+        """Clear all chart data"""
+        self._barCategories = []
+        self._barValues = []
+        self._lineSeries = []
+        self._lineCategories = []
+        self._scatterPoints = []
+        self.barDataChanged.emit()
+        self.lineDataChanged.emit()
+        self.scatterDataChanged.emit()
+        print("[ChartMapper] All chart data cleared")
+
+
 class PlotDataModel(QObject):
     """
     PlotModel - Modified by StatisticalAnalyzer for 3D plotting
     Provides formatted data for bar, surface, and scatter charts
+    Now integrated with ChartMapper for 2D chart support
     """
 
     # =======================================================
@@ -139,10 +297,13 @@ class PlotDataModel(QObject):
             "scatter": {}
         }
 
-        # Initialize the detailed models for QML
+        # Initialize the detailed models for QML (3D Charts)
         self._barModel = BarDataModel(self)
         self._scatterModel = ScatterDataModel(self)
         self._surfaceModel = SurfaceDataModel(self)
+
+        # Initialize ChartMapper for 2D Charts
+        self._chartMapper = ChartMapper(self)
 
     # =======================================================
     # Properties
@@ -169,7 +330,11 @@ class PlotDataModel(QObject):
     def scatterData(self):
         return self._plotData.get("scatter", {})
 
-    # Expose the detailed models to QML
+    @Property("QVariantMap", notify=plotDataChanged)
+    def lineData(self):
+        return self._plotData.get("line", {})
+
+    # Expose the detailed models to QML (for 3D charts)
     @Property(QObject, constant=True)
     def barModel(self):
         return self._barModel
@@ -181,6 +346,11 @@ class PlotDataModel(QObject):
     @Property(QObject, constant=True)
     def surfaceModel(self):
         return self._surfaceModel
+
+    # Expose ChartMapper to QML (for 2D charts)
+    @Property(QObject, constant=True)
+    def chartMapper(self):
+        return self._chartMapper
 
     # =======================================================
     # Public Methods
@@ -212,6 +382,7 @@ class PlotDataModel(QObject):
         self._barModel.setDataList([])
         self._scatterModel.setDataList([])
         self._surfaceModel.setDataList([])
+        self._chartMapper.clear()
         self.plotDataChanged.emit()
 
     # =======================================================
@@ -231,6 +402,14 @@ class PlotDataModel(QObject):
             self._barModel.setDataList(rows)
             print(f"[PlotModel] Updated bar model with {len(rows)} items")
 
+            # Also update ChartMapper for 2D bar charts
+            # This creates a result dict that ChartMapper understands
+            bar_result = {
+                "analysis_type": "Disease Frequency",
+                "diseases": [{"name": c, "count": v} for c, v in zip(data["categories"], data["values"])]
+            }
+            self._chartMapper.updateFromAnalysisResult(bar_result)
+
         elif chartType == "scatter" and "points" in data:
             # Convert points to scatter model format
             points_data = []
@@ -243,6 +422,13 @@ class PlotDataModel(QObject):
                 })
             self._scatterModel.setDataList(points_data)
             print(f"[PlotModel] Updated scatter model with {len(points_data)} points")
+
+            # Also update ChartMapper for 2D scatter charts
+            scatter_result = {
+                "analysis_type": "Variety Susceptibility",
+                "varieties": data.get("varieties_for_mapper", [])
+            }
+            self._chartMapper.updateFromAnalysisResult(scatter_result)
 
         elif chartType == "surface":
             if "surfaceData" in data:
@@ -263,7 +449,7 @@ class StatisticalAnalyzer(QObject):
     """
     StatisticalAnalyzer - Runs different statistics
     Reads from FieldDataset (single source of truth)
-    Updates PlotDataModel with plotable data for 3D visualization
+    Updates PlotDataModel with plotable data for visualization
     """
 
     # =======================================================
@@ -419,7 +605,7 @@ class StatisticalAnalyzer(QObject):
                 "diseases": diseases_list
             }
 
-            # Prepare plotable data for Bar Chart
+            # Prepare plotable data for Bar Chart (3D)
             if self._plotModel:
                 plot_data = {
                     "title": "Disease Frequency Distribution",
@@ -430,6 +616,9 @@ class StatisticalAnalyzer(QObject):
                     "percentages": [d["percentage"] for d in diseases_list]
                 }
                 self._plotModel.setPlotData("bar", plot_data)
+
+                # Also update ChartMapper for 2D charts
+                self._plotModel.chartMapper.updateFromAnalysisResult(result)
 
             self._storeResult("disease_frequency", result)
             self.analysisCompleted.emit(analysis_name, result)
@@ -505,15 +694,19 @@ class StatisticalAnalyzer(QObject):
                     "susceptible_diseases": susceptible_diseases
                 })
 
-            # Prepare plotable data for Scatter Plot
+            # Prepare plotable data for Scatter Plot (3D)
             if self._plotModel:
                 plot_data = {
                     "title": "Variety Susceptibility Analysis",
                     "xAxis": "Total Infections per Variety",
                     "yAxis": "Disease Percentage (%)",
-                    "points": scatter_points
+                    "points": scatter_points,
+                    "varieties_for_mapper": result["varieties"]
                 }
                 self._plotModel.setPlotData("scatter", plot_data)
+
+                # Also update ChartMapper for 2D charts
+                self._plotModel.chartMapper.updateFromAnalysisResult(result)
 
             self._storeResult("variety_susceptibility", result)
             self.analysisCompleted.emit(analysis_name, result)
@@ -583,7 +776,7 @@ class StatisticalAnalyzer(QObject):
             # Sort by infection rate (highest first)
             comparison_data.sort(key=lambda x: x["total_infections"], reverse=True)
 
-            # Prepare plotable data for Bar Chart
+            # Prepare plotable data for Bar Chart (3D)
             if self._plotModel:
                 plot_data = {
                     "title": "Infection Rate by Variety",
@@ -594,6 +787,14 @@ class StatisticalAnalyzer(QObject):
                 }
                 self._plotModel.setPlotData("bar", plot_data)
 
+                # Also update ChartMapper for 2D charts
+                # Convert to format ChartMapper expects for infection rate
+                infection_result = {
+                    "analysis_type": "Infection Rate Comparison",
+                    "varieties": result["varieties"]
+                }
+                self._plotModel.chartMapper.updateFromAnalysisResult(infection_result)
+
             self._storeResult("infection_rate_comparison", result)
             self.analysisCompleted.emit(analysis_name, result)
             print(f"[StatisticalAnalyzer] Completed {analysis_name}")
@@ -603,13 +804,13 @@ class StatisticalAnalyzer(QObject):
             print(f"[StatisticalAnalyzer] Error in {analysis_name}: {e}")
 
     # =======================================================
-    # 4. Disease By Region -> SURFACE/3D PLOT
+    # 4. Disease By Region -> LINE CHART (2D) / SURFACE (3D)
     # =======================================================
     @Slot()
     def computeDiseaseByRegion(self):
         """
         Disease By Region Analysis
-        Returns plotable data for Surface/3D Chart
+        Returns data for Line Chart (2D) and Surface Plot (3D)
         """
         analysis_name = "Disease By Region"
         print(f"[StatisticalAnalyzer] Starting {analysis_name}")
@@ -637,7 +838,22 @@ class StatisticalAnalyzer(QObject):
                 all_diseases.update(diseases.keys())
             diseases_list = sorted(list(all_diseases))
 
-            # Build complete grid data (every region-disease combination)
+            # Prepare Line Series data (for 2D charts)
+            lines_data = []
+            for disease in diseases_list:
+                points = []
+                for region_idx, region in enumerate(regions_list):
+                    count = region_disease_map[region].get(disease, 0)
+                    points.append({
+                        "x": region_idx,
+                        "y": count
+                    })
+                lines_data.append({
+                    "name": disease,
+                    "points": points
+                })
+
+            # Prepare Surface data (for 3D charts)
             surface_data = []
             for region_idx, region in enumerate(regions_list):
                 diseases = region_disease_map[region]
@@ -649,7 +865,6 @@ class StatisticalAnalyzer(QObject):
                         "value": float(count)
                     })
 
-            # Prepare result
             result = {
                 "analysis_type": analysis_name,
                 "total_records": len(records),
@@ -657,6 +872,7 @@ class StatisticalAnalyzer(QObject):
                 "total_diseases": len(diseases_list),
                 "regions": regions_list,
                 "diseases": diseases_list,
+                "lines_data": lines_data,
                 "regions_detail": []
             }
 
@@ -667,7 +883,7 @@ class StatisticalAnalyzer(QObject):
                     region_diseases_data.append({
                         "name": disease,
                         "count": count,
-                        "percentage": round((count / total_for_region) * 100, 2)
+                        "percentage": round((count / total_for_region) * 100, 2) if total_for_region > 0 else 0
                     })
                 result["regions_detail"].append({
                     "name": region,
@@ -675,7 +891,7 @@ class StatisticalAnalyzer(QObject):
                     "diseases": region_diseases_data
                 })
 
-            # Update plot model
+            # Update Plot Model (for 3D charts)
             if self._plotModel:
                 plot_data = {
                     "title": "Disease Distribution by Region",
@@ -686,9 +902,12 @@ class StatisticalAnalyzer(QObject):
                 }
                 self._plotModel.setPlotData("surface", plot_data)
 
+                # Update ChartMapper for 2D line charts
+                self._plotModel.chartMapper.updateFromAnalysisResult(result)
+
             self._storeResult("disease_by_region", result)
             self.analysisCompleted.emit(analysis_name, result)
-            print(f"[StatisticalAnalyzer] Completed with {len(surface_data)} points ({len(regions_list)} regions × {len(diseases_list)} diseases)")
+            print(f"[StatisticalAnalyzer] Completed with {len(lines_data)} disease lines across {len(regions_list)} regions")
 
         except Exception as e:
             self.analysisError.emit(analysis_name, str(e))
