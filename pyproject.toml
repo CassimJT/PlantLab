@@ -103,4 +103,5 @@ files = [
 "ui/models/model/ActionModel.qml",
 "ui/models/model/AvailableModel.qml",
 "ui/settings/Settings.qml",
+"ui/utiis/Utils.js",
 ]
