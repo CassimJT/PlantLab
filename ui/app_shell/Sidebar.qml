@@ -6,6 +6,7 @@ import QtQuick.Layouts
 
 Page {
     id: sidebar
+    property var authScreenWindow: null
     width: parent.width * 0.14
     clip: true
     background: Rectangle {
@@ -26,8 +27,8 @@ Page {
         height: parent.height * .10
         background: Rectangle {
             color: logo.highlighted ? "#e0f2fe"
-                 : logo.hovered   ? "#f1f5f9"
-                                  : "transparent"
+                                    : logo.hovered   ? "#f1f5f9"
+                                                     : "transparent"
             radius: 8
         }
         icon.source: "qrc:/assets/app_icon/PlantDocutor.png"
@@ -82,8 +83,8 @@ Page {
         height: 70
         background: Rectangle {
             color: user_id.highlighted ? "#e0f2fe"
-                 : user_id.hovered   ? "#f1f5f9"
-                                  : "transparent"
+                                       : user_id.hovered   ? "#f1f5f9"
+                                                           : "transparent"
             radius: 8
         }
         Row {
@@ -109,7 +110,7 @@ Page {
             }
             Text {
                 id: user_email
-                text: qsTr("CassimJt@gmail.com")
+                text: qsTr("SingIn")
                 color: "#333"
                 anchors {
                     verticalCenter: parent.verticalCenter
@@ -120,6 +121,18 @@ Page {
         anchors {
             bottom: parent.bottom
         }
+        onClicked: {
+            if (!authScreenWindow) {
+                authScreenWindow = Qt.createComponent("../auth/screen/AuthScreen.qml").createObject()
+                authScreenWindow.closing.connect(function() {
+                    authScreenWindow = null
+                })
+            } else {
+                authScreenWindow.show()
+                authScreenWindow.raise()
+            }
+        }
+
     }
     
 }

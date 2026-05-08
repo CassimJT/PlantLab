@@ -16,6 +16,7 @@ Rectangle {
     property var inferenceWindow: null
     property var settingsWindow: null
 
+
     ToolBar {
         anchors.fill: parent
         Material.background: "Transparent"

@@ -11,7 +11,7 @@ class ModelScanner(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._models = []
-        self._model_dir = "/home/csociety/Documents/plantlab/models"
+        self._model_dir = os.path.expanduser("~/Documents/plantlab/models")
         self.scan_directory()
 
     @Slot(str)

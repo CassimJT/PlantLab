@@ -6,30 +6,51 @@ ApplicationWindow {
     height: screen.height * 0.85
     visible: true
     title: qsTr("PlantLab")
+    property var aboutWindow: null
+    property var settingsWindow: null
 
     menuBar: MenuBar {
         Menu {
-            title: qsTr("File")
-            MenuItem { text: qsTr("Open") }
-            MenuItem { text: qsTr("Save") }
+            title: qsTr("PLantLab")
             MenuSeparator {}
             MenuItem { text: qsTr("Exit"); onTriggered: Qt.quit() }
         }
         Menu {
             title: qsTr("Edit")
-            MenuItem { text: qsTr("Preference") }
+            MenuItem {
+                text: qsTr("Preference")
+                onClicked: {
+                    if (!settingsWindow) {
+                        settingsWindow = Qt.createComponent("./ui/app_shell/windows/Settings.qml").createObject()
+                        settingsWindow.closing.connect(function() {
+                            settingsWindow = null
+                        })
+                    } else {
+                        settingsWindow.show()
+                        settingsWindow.raise()
+                    }
+                }
+            }
 
         }
 
-        Menu {
-            title: qsTr("View")
-            MenuItem { text: qsTr("Dashboard") }
-            MenuItem { text: qsTr("Settings") }
-        }
 
         Menu {
             title: qsTr("Help")
-            MenuItem { text: qsTr("About") }
+            MenuItem {
+                text: qsTr("About")
+                onClicked: {
+                    if (!aboutWindow) {
+                        aboutWindow = Qt.createComponent("./ui/app_shell/windows/About.qml").createObject()
+                        aboutWindow.closing.connect(function() {
+                            aboutWindow = null
+                        })
+                    } else {
+                        aboutWindow.show()
+                        aboutWindow.raise()
+                    }
+                }
+            }
         }
     }
 
