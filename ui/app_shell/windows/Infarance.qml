@@ -98,164 +98,16 @@ Window {
        RESULTS PAGE (CLEANED)
        ====================== */
     Component {
-        id: resultsPage
+            id: resultsPage
 
-        Item {
-            anchors.fill: parent
-
-            Rectangle {
-                anchors.centerIn: parent
-                width: parent.width * 0.75
-                height: parent.height * 0.85
-
-                color: root.cardColor
-                radius: 20
-                border.color: root.borderColor
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 30
-                    spacing: 20
-
-                    /* IMAGE PREVIEW */
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 220
-                        radius: 12
-                        color: "#f8fafc"
-
-                        Image {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            source: root.selectedImagePath ? "file://" + root.selectedImagePath : ""
-                            fillMode: Image.PreserveAspectFit
-                            cache: false
-                        }
-                    }
-
-                    /* TITLE */
-                    Text {
-                        text: InfarenceRunner.disease_name || "Unknown Disease"
-                        font.pixelSize: 26
-                        font.bold: true
-                        color: root.textMain
-                        Layout.fillWidth: true
-                    }
-
-                    /* CONFIDENCE BADGE */
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 45
-                        radius: 10
-
-                        color: "#f1f5f9"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Confidence: " +
-                                  (InfarenceRunner.confidence
-                                   ? InfarenceRunner.confidence.toFixed(2) + "%"
-                                   : "0%")
-
-                            font.pixelSize: 16
-                            font.bold: true
-
-                            color: InfarenceRunner.confidence > 70
-                                   ? "#16a34a"
-                                   : (InfarenceRunner.confidence > 40
-                                      ? "#f59e0b"
-                                      : "#dc2626")
-                        }
-                    }
-
-                    /* DESCRIPTION CARD */
-                    Rectangle {
-                        Layout.fillWidth: true
-                        radius: 12
-                        color: "#f8fafc"
-                        border.color: root.borderColor
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 15
-                            spacing: 8
-
-                            Text {
-                                text: "Description"
-                                font.pixelSize: 18
-                                font.bold: true
-                                color: root.textMain
-                            }
-
-                            Text {
-                                text: InfarenceRunner.description || "No description available"
-                                wrapMode: Text.WordWrap
-                                color: root.textMuted
-                                font.pixelSize: 14
-                            }
-                        }
-                    }
-
-                    /* TREATMENT CARD */
-                    Rectangle {
-                        Layout.fillWidth: true
-                        radius: 12
-                        color: "#f8fafc"
-                        border.color: root.borderColor
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 15
-                            spacing: 8
-
-                            Text {
-                                text: InfarenceRunner.current_category === "disease"
-                                      ? "Treatment"
-                                      : "Control Methods"
-                                font.pixelSize: 18
-                                font.bold: true
-                                color: root.textMain
-                            }
-
-                            Text {
-                                text: InfarenceRunner.cure || "No treatment information available"
-                                wrapMode: Text.WordWrap
-                                color: root.textMuted
-                                font.pixelSize: 14
-                            }
-                        }
-                    }
-
-                    /* BUTTON */
-                    Button {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: 220
-                        Layout.preferredHeight: 45
-
-                        text: "New Analysis"
-
-                        background: Rectangle {
-                            radius: 10
-                            color: root.primary
-                        }
-
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            anchors.centerIn: parent
-                            font.bold: true
-                        }
-
-                        onClicked: {
-                            root.selectedImagePath = ""
-                            root.currentPage = 0
-                        }
-                    }
-                }
-            }
+           ResultsPage {
+               selectedImagePath: root.selectedImagePath
+               onNewAnalysis: {
+                   root.selectedImagePath = ""
+                   root.currentPage = 0
+               }
+           }
         }
-    }
-
     /* ======================
        LOADING
        ====================== */
@@ -276,17 +128,17 @@ Window {
        BACKEND CONNECTION
        ====================== */
     Connections {
-        target: InfarenceRunner
+            target: InfarenceRunner
 
-        function onInferenceFinished() {
-            root.isProcessing = false
-            root.currentPage = 1
-        }
+            function onInference_finished() {
+                root.isProcessing = false
+                root.currentPage = 1
+            }
 
-        function onInferenceFailed(error) {
-            root.isProcessing = false
-            errorDialog.message = error
-            errorDialog.open()
+            function onInference_failed(error) {
+                root.isProcessing = false
+                errorDialog.message = error
+                errorDialog.open()
+            }
         }
-    }
 }

@@ -293,6 +293,6 @@
             "QtQml",
             "QtWidgets"
         ],
-        "inputFile": "/home/csociety/CISociety/Qt/Plantlab/src/core/controllers/FileSystemController.py"
+        "inputFile": "/home/daud/Projects/PlantLab/src/core/controllers/FileSystemController.py"
     }
 ]
