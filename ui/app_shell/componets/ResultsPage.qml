@@ -9,8 +9,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 30
-        spacing: 30
+        anchors.margins: Math.min(root.width, root.height) * 0.04
+        spacing: root.height * 0.03
 
         /* ======================
            CONTENT
@@ -18,11 +18,11 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 30
+            spacing: root.width * 0.03
 
             /* LEFT: IMAGE */
             Rectangle {
-                Layout.preferredWidth: 350
+                Layout.preferredWidth: Math.min(root.width * 0.38, 380)
                 Layout.fillHeight: true
                 radius: 14
                 color: "#111827"
@@ -40,50 +40,43 @@ Item {
                     layer.enabled: true
                     layer.smooth: true
                 }
-
-                // Subtle corner badge showing image is loaded
-                Rectangle {
-                    visible: root.selectedImagePath !== ""
-                    anchors.bottom: parent.bottom
-                    anchors.right: parent.right
-                    anchors.margins: 10
-                    width: 28; height: 28; radius: 8
-                    color: "#1a2035"
-                    border.color: "#2d3550"; border.width: 1
-                    Text {
-                        anchors.centerIn: parent
-                        text: "🌿"; font.pixelSize: 14
-                    }
-                }
             }
 
             /* RIGHT: RESULTS */
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 14
+                spacing: root.height * 0.018
 
                 // Disease name card
                 DiseaseCard {
                     diseaseName: InfarenceRunner.disease_name
+                    Layout.fillWidth: true
                 }
 
                 // Description card
                 InfoCard {
                     title: "Description"
                     content: InfarenceRunner.description
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
                 }
 
                 // Treatment card
                 InfoCard {
                     title: "Treatment"
                     content: InfarenceRunner.cure
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
                     Layout.bottomMargin: 10
                 }
 
                 // Metrics row
                 RowLayout {
+                    Layout.fillWidth: true
                     spacing: 12
+                    Layout.bottomMargin: 10
+
                     MetricCard {
                         title: "Confidence"
                         value: InfarenceRunner.confidence.toFixed(1) + "%"
@@ -103,7 +96,7 @@ Item {
                    ====================== */
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 44
+                    height: Math.max(38, root.height * 0.062)
                     radius: 10
                     color: newAnalysisHover.containsMouse ? "#3d4fd6" : "#4f6ef7"
                     border.color: newAnalysisHover.containsMouse ? "#6b84f9" : "transparent"
@@ -114,10 +107,9 @@ Item {
                         anchors.centerIn: parent
                         text: "← New Analysis"
                         color: "#ffffff"
-                        font.pixelSize: 14
+                        font.pixelSize: Math.max(12, root.height * 0.02)
                         font.weight: Font.Medium
                     }
-
                     HoverHandler { id: newAnalysisHover }
                     TapHandler { onTapped: root.newAnalysis() }
                 }
