@@ -81,7 +81,7 @@ files = [
 "ui/auth/componets/SignUp.qml",
 "ui/auth/componets/SingIn.qml",
 "ui/auth/pages/SignInPage.qml",
-"ui/auth/pages/SingUpPage.qml",
+"ui/auth/pages/SignUpPage.qml",
 "ui/auth/screen/AuthScreen.qml",
 "ui/curation/labeling_page.qml",
 "ui/dashboard/DashboardPage.qml",
