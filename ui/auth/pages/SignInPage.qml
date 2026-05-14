@@ -4,7 +4,6 @@ import QtQuick.Layouts 1.15
 
 Page {
     id:signInPage
-    property var stackView: null
     width: 360
     height: 800
     background: Rectangle { color: "#edf2e0" }
@@ -276,7 +275,7 @@ Page {
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
-                                    stackView.push("ui/auth/pages/SignUpPage.qml")
+                                    mainStackView.push("ui/auth/pages/SignUpPage.qml")
                                 }
                             }
                         }
