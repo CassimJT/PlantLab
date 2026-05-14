@@ -30,6 +30,19 @@ Page {
                 Layout.preferredHeight: 40
                 Layout.alignment: Qt.AlignHCenter
             }
+            // ── Heading ─────────────────────────────────────────────────────
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: "Sign in to PlantDoctor"
+                            font.family: "Georgia"
+                            font.pixelSize: 26
+                            font.bold: true
+                            color: "#1A2E1F"
+                            font.letterSpacing: 0.3
+                        }
+
+                        Item { Layout.preferredHeight: 70 }
+
         }
 }
 

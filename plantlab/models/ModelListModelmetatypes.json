@@ -40,6 +40,6 @@
             "QtCore",
             "QtQml"
         ],
-        "inputFile": "/home/csociety/CISociety/Qt/Plantlab/src/core/model_engineering/ModelListModel.py"
+        "inputFile": "/home/lizi/Projects/PlantLab/src/core/model_engineering/ModelListModel.py"
     }
 ]
