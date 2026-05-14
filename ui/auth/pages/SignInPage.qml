@@ -42,8 +42,28 @@ Page {
                         }
 
                         Item { Layout.preferredHeight: 70 }
+                        // ── Card ─────────────────────────────────────────────────────────
+                                    Rectangle {
+                                        Layout.leftMargin: 20
+                                        Layout.rightMargin: 20
+                                        Layout.fillWidth: true
+                                        implicitHeight: cardColumn.implicitHeight + 36
+                                        radius: 20
+                                        color: "#FFFFFF"
+                                        border.color: "#000000"
+                                        border.width: 1
 
+
+                                        ColumnLayout {
+                                            id: cardColumn
+                                            anchors {
+                                                top: parent.top; left: parent.left; right: parent.right
+                                                topMargin: 28; leftMargin: 20; rightMargin: 20
+                                            }
+                                            spacing: 16
         }
 }
 
+}
+}
 }
