@@ -253,10 +253,49 @@ Page {
                         }
                     }
                     Item { Layout.preferredHeight: 2 }
+                    // ── Create account ────────────────────────────────────────
+                    Row {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 4
 
+                        Text {
+                            text: "Don't have an account?"
+                            font.pixelSize: 13
+                            color: "#000000"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            text: "Create account"
+                            font.pixelSize: 13
+                            font.bold: true
+                            color:  "#34c45a"
+                            font.underline: true
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    mainStackView?.push("SignUpPage.qml")
+                                }
+                            }
+                        }
+                    }
+
+
+                    Item { Layout.preferredHeight: 8 }
                 }
             }
 
+            Item { Layout.preferredHeight: 40 }
         }
     }
 }
+
+
+
+
+
+
+
+
+
