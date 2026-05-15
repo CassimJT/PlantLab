@@ -91,7 +91,7 @@ Page {
 
                     ColumnLayout {
                         width: parent.width
-                        spacing: 20 // Desktop friendly spacing
+                        spacing: 20
 
                         Label {
                             id: reportTitle
@@ -116,7 +116,8 @@ Page {
                             // Card 1: Main Summary
                             Rectangle {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 100
+                                // Matched to the insights card height with a little addition
+                                Layout.preferredHeight: Math.min(insightsContent.implicitHeight + 40, 200)
                                 color: "#f8fafc"
                                 border.color: "#e5e7eb"
                                 border.width: 1
@@ -133,15 +134,22 @@ Page {
                                         font.pixelSize: 14
                                         color: "#0f172a"
                                     }
-                                    Label {
-                                        id: summaryLabel
-                                        text: "Report summary will appear here..."
-                                        wrapMode: Text.WordWrap
-                                        font.pixelSize: 13
-                                        color: "#475569"
+
+                                    ScrollView {
                                         Layout.fillWidth: true
                                         Layout.fillHeight: true
-                                        verticalAlignment: Text.AlignTop
+                                        clip: true
+                                        contentWidth: availableWidth
+
+                                        Label {
+                                            id: summaryLabel
+                                            width: parent.width
+                                            text: "Report summary will appear here..."
+                                            wrapMode: Text.WordWrap
+                                            font.pixelSize: 13
+                                            color: "#475569"
+                                            verticalAlignment: Text.AlignTop
+                                        }
                                     }
                                 }
                             }
@@ -149,7 +157,8 @@ Page {
                             // Card 2: Insights / Top Items
                             Rectangle {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 100
+                                // Matched to the insights card height with a little addition
+                                Layout.preferredHeight: Math.min(insightsContent.implicitHeight + 40, 200)
                                 color: "#f8fafc"
                                 border.color: "#e5e7eb"
                                 border.width: 1
@@ -166,20 +175,31 @@ Page {
                                         font.pixelSize: 14
                                         color: "#0f172a"
                                     }
-                                    Label {
-                                        id: insightsLabel
-                                        text: "Additional insights will appear here..."
-                                        wrapMode: Text.WordWrap
-                                        font.pixelSize: 13
-                                        color: "#475569"
+
+                                    ScrollView {
+                                        id: insightsScroll
                                         Layout.fillWidth: true
                                         Layout.fillHeight: true
-                                        verticalAlignment: Text.AlignTop
+                                        clip: true
+                                        contentWidth: availableWidth
+
+                                        Label {
+                                            id: insightsLabel
+                                            width: parent.width
+                                            text: "Additional insights will appear here..."
+                                            wrapMode: Text.WordWrap
+                                            font.pixelSize: 13
+                                            color: "#475569"
+                                            verticalAlignment: Text.AlignTop
+                                        }
                                     }
                                 }
                             }
                         }
 
+                        // Hidden items used to calculate the natural height of the text for the cards
+                        Item { id: summaryContent; property real implicitHeight: summaryLabel.implicitHeight }
+                        Item { id: insightsContent; property real implicitHeight: insightsLabel.implicitHeight }
                         Rectangle {
                             Layout.fillWidth: true
                             height: 1
@@ -298,14 +318,14 @@ Page {
 
                                 Label {
                                     text: modelData.createdAt ?
-                                          new Date(modelData.createdAt).toLocaleString() : ""
+                                              new Date(modelData.createdAt).toLocaleString() : ""
                                     font.pixelSize: 11
                                     color: "#6b7280"
                                 }
 
                                 Label {
                                     text: modelData.type ?
-                                          modelData.type.replace(/_/g, " ").toUpperCase() : ""
+                                              modelData.type.replace(/_/g, " ").toUpperCase() : ""
                                     font.pixelSize: 10
                                     color: "#3b82f6"
                                 }
@@ -464,9 +484,9 @@ Page {
 
         // Call the PDF generation
         var result = FieldDataExplorer.generateReportPdf(
-            root.currentReport.type,
-            root.currentReport.data
-        )
+                    root.currentReport.type,
+                    root.currentReport.data
+                    )
 
         console.log("generateReportPdf returned:", result)
     }
@@ -495,48 +515,48 @@ Page {
 
     function showNotification(message) {
         var notification = Qt.createQmlObject(`
-            import QtQuick 2.15
-            import QtQuick.Controls 2.15
+                                              import QtQuick 2.15
+                                              import QtQuick.Controls 2.15
 
-            Rectangle {
-                id: notify
-                color: "#333"
-                radius: 5
-                opacity: 0
-                z: 999
+                                              Rectangle {
+                                              id: notify
+                                              color: "#333"
+                                              radius: 5
+                                              opacity: 0
+                                              z: 999
 
-                Label {
-                    text: message
-                    color: "white"
-                    padding: 10
-                }
+                                              Label {
+                                              text: message
+                                              color: "white"
+                                              padding: 10
+                                              }
 
-                PropertyAnimation {
-                    target: notify
-                    property: "opacity"
-                    from: 0
-                    to: 0.9
-                    duration: 300
-                }
+                                              PropertyAnimation {
+                                              target: notify
+                                              property: "opacity"
+                                              from: 0
+                                              to: 0.9
+                                              duration: 300
+                                              }
 
-                PropertyAnimation {
-                    target: notify
-                    property: "opacity"
-                    from: 0.9
-                    to: 0
-                    duration: 300
-                    delay: 2000
-                    onFinished: notify.destroy()
-                }
+                                              PropertyAnimation {
+                                              target: notify
+                                              property: "opacity"
+                                              from: 0.9
+                                              to: 0
+                                              duration: 300
+                                              delay: 2000
+                                              onFinished: notify.destroy()
+                                              }
 
-                Component.onCompleted: {
-                    parent = root
-                    anchors.centerIn = parent
-                    width = implicitWidth + 20
-                    height = implicitHeight + 20
-                }
-            }
-        `, root, {"message": message})
+                                              Component.onCompleted: {
+                                              parent = root
+                                              anchors.centerIn = parent
+                                              width = implicitWidth + 20
+                                              height = implicitHeight + 20
+                                              }
+                                              }
+                                              `, root, {"message": message})
     }
 
     // ============================
@@ -548,7 +568,7 @@ Page {
 
         if (typeof FieldDataExplorer !== 'undefined' && FieldDataExplorer) {
             var reports = FieldDataExplorer.getSavedReports ?
-                          FieldDataExplorer.getSavedReports() : []
+                        FieldDataExplorer.getSavedReports() : []
 
             if (!reports || reports.length === 0) {
                 loadFromAnalysisResults()
@@ -568,45 +588,45 @@ Page {
         var diseaseResult = StatisticalAnalyzer.getResult("disease_frequency")
         if (diseaseResult && diseaseResult.diseases) {
             reports.push({
-                id: "disease_frequency_report_" + Date.now(),
-                title: "Disease Frequency Analysis",
-                createdAt: new Date().toISOString(),
-                type: "disease_frequency",
-                data: diseaseResult
-            })
+                             id: "disease_frequency_report_" + Date.now(),
+                             title: "Disease Frequency Analysis",
+                             createdAt: new Date().toISOString(),
+                             type: "disease_frequency",
+                             data: diseaseResult
+                         })
         }
 
         var varietyResult = StatisticalAnalyzer.getResult("variety_susceptibility")
         if (varietyResult && varietyResult.varieties) {
             reports.push({
-                id: "variety_susceptibility_report_" + Date.now(),
-                title: "Variety Susceptibility Analysis",
-                createdAt: new Date().toISOString(),
-                type: "variety_susceptibility",
-                data: varietyResult
-            })
+                             id: "variety_susceptibility_report_" + Date.now(),
+                             title: "Variety Susceptibility Analysis",
+                             createdAt: new Date().toISOString(),
+                             type: "variety_susceptibility",
+                             data: varietyResult
+                         })
         }
 
         var infectionResult = StatisticalAnalyzer.getResult("infection_rate_comparison")
         if (infectionResult && infectionResult.varieties) {
             reports.push({
-                id: "infection_rate_report_" + Date.now(),
-                title: "Infection Rate Comparison",
-                createdAt: new Date().toISOString(),
-                type: "infection_rate",
-                data: infectionResult
-            })
+                             id: "infection_rate_report_" + Date.now(),
+                             title: "Infection Rate Comparison",
+                             createdAt: new Date().toISOString(),
+                             type: "infection_rate",
+                             data: infectionResult
+                         })
         }
 
         var regionResult = StatisticalAnalyzer.getResult("disease_by_region")
         if (regionResult && regionResult.regions) {
             reports.push({
-                id: "disease_by_region_report_" + Date.now(),
-                title: "Disease Distribution by Region",
-                createdAt: new Date().toISOString(),
-                type: "disease_by_region",
-                data: regionResult
-            })
+                             id: "disease_by_region_report_" + Date.now(),
+                             title: "Disease Distribution by Region",
+                             createdAt: new Date().toISOString(),
+                             type: "disease_by_region",
+                             data: regionResult
+                         })
         }
 
         reportsList = reports
@@ -630,23 +650,23 @@ Page {
             var diseases = []
             for (var name in diseaseMap) {
                 diseases.push({
-                    name: name,
-                    count: diseaseMap[name],
-                    percentage: (diseaseMap[name] / records.length * 100).toFixed(1)
-                })
+                                  name: name,
+                                  count: diseaseMap[name],
+                                  percentage: (diseaseMap[name] / records.length * 100).toFixed(1)
+                              })
             }
             diseases.sort(function(a, b) { return b.count - a.count })
 
             reports.push({
-                id: "disease_frequency_" + Date.now(),
-                title: "Disease Frequency Analysis",
-                createdAt: new Date().toISOString(),
-                type: "disease_frequency",
-                data: {
-                    total_records: records.length,
-                    diseases: diseases
-                }
-            })
+                             id: "disease_frequency_" + Date.now(),
+                             title: "Disease Frequency Analysis",
+                             createdAt: new Date().toISOString(),
+                             type: "disease_frequency",
+                             data: {
+                                 total_records: records.length,
+                                 diseases: diseases
+                             }
+                         })
         }
 
         reportsList = reports
@@ -678,21 +698,21 @@ Page {
 
         // Split data between the two cards
         summaryLabel.text = "Total Records Analyzed: " + data.total_records + "\n" +
-                            "Total Distinct Diseases: " + data.diseases.length
+                "Total Distinct Diseases: " + data.diseases.length
 
         var insightsText = ""
         for (var i = 0; i < Math.min(data.diseases.length, 5); i++) {
             insightsText += "• " + data.diseases[i].name + ": " +
-                          data.diseases[i].count + " (" + data.diseases[i].percentage + "%)\n"
+                    data.diseases[i].count + " (" + data.diseases[i].percentage + "%)\n"
         }
         insightsLabel.text = insightsText.trim()
 
         var sections = []
         for (var j = 0; j < data.diseases.length; j++) {
             sections.push({
-                section: data.diseases[j].name,
-                value: "Total cases: " + data.diseases[j].count + "\nPercentage: " + data.diseases[j].percentage + "%"
-            })
+                              section: data.diseases[j].name,
+                              value: "Total cases: " + data.diseases[j].count + "\nPercentage: " + data.diseases[j].percentage + "%"
+                          })
         }
         reportRepeater.model = sections
     }
@@ -719,9 +739,9 @@ Page {
                 if (l < Math.min(v.susceptible_diseases.length, 3) - 1) diseasesList += ", "
             }
             sections.push({
-                section: v.name,
-                value: v.total_infections + " infections\n" + diseasesList
-            })
+                              section: v.name,
+                              value: v.total_infections + " infections\n" + diseasesList
+                          })
         }
         reportRepeater.model = sections
     }
@@ -743,9 +763,9 @@ Page {
         for (var m = 0; m < data.varieties.length; m++) {
             var v = data.varieties[m]
             sections.push({
-                section: v.name,
-                value: "Total: " + v.total_infections + "\nRate: " + v.infection_rate
-            })
+                              section: v.name,
+                              value: "Total: " + v.total_infections + "\nRate: " + v.infection_rate
+                          })
         }
         reportRepeater.model = sections
     }
@@ -755,7 +775,7 @@ Page {
 
         // Split data between the two cards
         summaryLabel.text = "Regions Analyzed: " + data.total_regions + "\n" +
-                            "Diseases Detected: " + data.total_diseases
+                "Diseases Detected: " + data.total_diseases
 
         var insightsText = ""
         if (data.regions_detail && data.regions_detail.length > 0) {
@@ -771,10 +791,10 @@ Page {
             var r = data.regions_detail[n]
             var topDisease = r.diseases.sort((a, b) => b.count - a.count)[0]
             sections.push({
-                section: r.name,
-                value: "Total infections: " + r.total_infections + "\nTop Disease: " +
-                       (topDisease ? topDisease.name + " (" + topDisease.count + ")" : "N/A")
-            })
+                              section: r.name,
+                              value: "Total infections: " + r.total_infections + "\nTop Disease: " +
+                                     (topDisease ? topDisease.name + " (" + topDisease.count + ")" : "N/A")
+                          })
         }
         reportRepeater.model = sections
     }
