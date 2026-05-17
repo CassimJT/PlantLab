@@ -7,8 +7,8 @@
 #include <QtQml/qqml.h>
 #include <QtQml/qqmlmoduleregistration.h>
 
-#if __has_include(</home/csociety/CISociety/Qt/Plantlab/src/core/model_engineering/ModelListModel.py>)
-#  include </home/csociety/CISociety/Qt/Plantlab/src/core/model_engineering/ModelListModel.py>
+#if __has_include(</home/noel/Documents/PlantDoctor/PlantLab/PlantLab/src/core/model_engineering/ModelListModel.py>)
+#  include </home/noel/Documents/PlantDoctor/PlantLab/PlantLab/src/core/model_engineering/ModelListModel.py>
 #endif
 
 
