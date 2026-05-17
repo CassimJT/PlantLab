@@ -45,7 +45,7 @@ Page {
 
                     // Auto-run when selection changes
                     onCurrentIndexChanged: {
-                        if (root.visible) {   // only run if page is visible
+                        if (root.visible) {
                             callAnalysis(analysisSelector.currentText)
                         }
                     }
@@ -120,6 +120,7 @@ Page {
             border.color: "#e5e7eb"
 
             StackLayout {
+                id: chartStack
                 anchors.fill: parent
                 anchors.margins: 12
                 currentIndex: {
@@ -132,9 +133,20 @@ Page {
                     }
                 }
 
-                BarSeriesChart     { chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null }
-                ScatterSeriesChart { chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null }
-                PieSeriesChart    { chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null }   // your QtCharts version
+                BarSeriesChart {
+                    id: barChart
+                    chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null
+                }
+
+                ScatterSeriesChart {
+                    id: scatterChart
+                    chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null
+                }
+
+                PieSeriesChart {
+                    id: pieChart
+                    chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null
+                }
             }
         }
     }
@@ -145,14 +157,18 @@ Page {
             console.log("Analysis completed:", analysisName)
             root.isRunning = false
 
+            // Force chart refresh based on analysis type
             if (analysisName === "Disease Frequency" || analysisName === "Infection Rate Comparison") {
+                if (barChart) barChart.updateFromMapper()
                 totalRecordsLabel.text = result.total_records || "—"
                 topCategoryLabel.text = result.diseases?.[0]?.name || result.varieties?.[0]?.name || "—"
             }
             else if (analysisName === "Variety Susceptibility") {
+                if (scatterChart) scatterChart.updateFromMapper()
                 topCategoryLabel.text = result.varieties?.[0]?.name || "—"
             }
             else if (analysisName === "Disease By Region") {
+                if (pieChart) pieChart.updateFromMapper()
                 totalRecordsLabel.text = result.total_records || "—"
                 regionImpactLabel.text = result.regions_detail?.[0]?.name || "—"
             }

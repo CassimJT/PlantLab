@@ -32,6 +32,8 @@ Item {
         legend.visible: true
         legend.alignment: Qt.AlignRight
         title: pieChartRoot.chartTitle
+        animationOptions: ChartView.SeriesAnimations
+        animationDuration: 800
 
         PieSeries {
             id: pieSeries
