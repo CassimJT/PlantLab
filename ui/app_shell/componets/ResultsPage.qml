@@ -4,9 +4,7 @@ import QtQuick.Layouts 1.15
 
 Item {
     id: root
-
     property string selectedImagePath: ""
-
     signal newAnalysis()
 
     ColumnLayout {
@@ -26,8 +24,11 @@ Item {
             Rectangle {
                 Layout.preferredWidth: 350
                 Layout.fillHeight: true
-                radius: 12
-                color: "#f8fafc"
+                radius: 14
+                color: "#111827"
+                border.color: "#2d3550"
+                border.width: 1
+                clip: true
 
                 Image {
                     anchors.fill: parent
@@ -36,6 +37,23 @@ Item {
                     source: root.selectedImagePath !== ""
                             ? "file://" + root.selectedImagePath
                             : ""
+                    layer.enabled: true
+                    layer.smooth: true
+                }
+
+                // Subtle corner badge showing image is loaded
+                Rectangle {
+                    visible: root.selectedImagePath !== ""
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    anchors.margins: 10
+                    width: 28; height: 28; radius: 8
+                    color: "#1a2035"
+                    border.color: "#2d3550"; border.width: 1
+                    Text {
+                        anchors.centerIn: parent
+                        text: "🌿"; font.pixelSize: 14
+                    }
                 }
             }
 
@@ -43,31 +61,34 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 20
+                spacing: 14
 
+                // Disease name card
                 DiseaseCard {
                     diseaseName: InfarenceRunner.disease_name
                 }
 
+                // Description card
                 InfoCard {
                     title: "Description"
                     content: InfarenceRunner.description
                 }
 
+                // Treatment card
                 InfoCard {
                     title: "Treatment"
                     content: InfarenceRunner.cure
+                    Layout.bottomMargin: 10
                 }
 
+                // Metrics row
                 RowLayout {
-                    spacing: 10
-
+                    spacing: 12
                     MetricCard {
                         title: "Confidence"
                         value: InfarenceRunner.confidence.toFixed(1) + "%"
                         Layout.fillWidth: true
                     }
-
                     MetricCard {
                         title: "Framework"
                         value: InfarenceRunner.current_framework
@@ -77,11 +98,28 @@ Item {
 
                 Item { Layout.fillHeight: true }
 
-                Button {
-                    text: "← New Analysis"
+                /* ======================
+                   NEW ANALYSIS BUTTON
+                   ====================== */
+                Rectangle {
                     Layout.fillWidth: true
+                    height: 44
+                    radius: 10
+                    color: newAnalysisHover.containsMouse ? "#3d4fd6" : "#4f6ef7"
+                    border.color: newAnalysisHover.containsMouse ? "#6b84f9" : "transparent"
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 150 } }
 
-                    onClicked: root.newAnalysis()
+                    Text {
+                        anchors.centerIn: parent
+                        text: "← New Analysis"
+                        color: "#ffffff"
+                        font.pixelSize: 14
+                        font.weight: Font.Medium
+                    }
+
+                    HoverHandler { id: newAnalysisHover }
+                    TapHandler { onTapped: root.newAnalysis() }
                 }
             }
         }
