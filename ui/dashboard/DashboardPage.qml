@@ -2,20 +2,52 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "./component"
+import "../analysis/componets"
 
 Page {
     id: dashboard
 
     property real metricCardheight: dashboard.height * 0.30
-    property real chartHeight: dashboard.height * 0.32
-    //property string deviceStateText: "OFF"
-
-    // Use a function + delayed assignment to avoid QObject wrapper issues
-    property var firstDevice: null
+    property real chartHeight: dashboard.height * 0.40
+    property int uniqueDiseaseCount: 0
+    property string topDisease: "—"
+    property string mostAffectedRegion: "—"
 
     background: Rectangle {
         color: Qt.rgba(0, 0, 0, 0)
         radius: 10
+    }
+
+    Timer {
+        id: analysisTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            console.log("Running analysis...")
+            if (StatisticalAnalyzer) {
+                StatisticalAnalyzer.runAnalysis("Disease Frequency")
+                StatisticalAnalyzer.runAnalysis("Infection Rate Comparison")
+                StatisticalAnalyzer.runAnalysis("Disease By Region")
+                updateSummaryData()
+                busy.visible = false
+            }
+        }
+    }
+
+    // Update summary data after analysis completes
+    function updateSummaryData() {
+        if (StatisticalAnalyzer) {
+            var stats = StatisticalAnalyzer.getSummaryStatistics()
+            uniqueDiseaseCount = stats.total_diseases || 0
+            topDisease = stats.top_disease || "—"
+            mostAffectedRegion = stats.most_affected_region || "—"
+            console.log("Summary - Top Disease:", topDisease, "Region:", mostAffectedRegion)
+
+            // Update the SummaryCard content
+            if (summaryCard) {
+                summaryCard.updateData(topDisease, mostAffectedRegion)
+            }
+        }
     }
 
     ColumnLayout {
@@ -31,88 +63,85 @@ Page {
             MetricCard {
                 Layout.fillWidth: true
                 Layout.preferredHeight: dashboard.metricCardheight
-
                 DHTMeter {
                     id: dhtMeter
-
-                    t_value: dashboard.firstDevice ? dashboard.firstDevice.temperature : 0.0
-                    h_value: dashboard.firstDevice ? dashboard.firstDevice.humidity : 0.0
-                    stateLabel: dashboard.firstDevice && dashboard.firstDevice.state === 2 ? "ON" : "OFF"
-
-                    // Very important debug logs
-                    onT_valueChanged: console.log("=== DHTMeter Temp →", t_value)
-                    onH_valueChanged: console.log("=== DHTMeter Hum  →", h_value)
+                    t_value: 0.0
+                    h_value: 0.0
+                    stateLabel: "OFF"
                 }
             }
 
-            MetricCard {
-                Layout.fillWidth:
-                    true; Layout.preferredHeight: dashboard.metricCardheight
-                BusyIndicator { anchors.centerIn: parent }
+            SummaryCard {
+                id: summaryCard
+                Layout.fillWidth: true
+                Layout.preferredHeight: dashboard.metricCardheight
+                top_deseas: dashboard.topDisease
+                top_rigeon: dashboard.mostAffectedRegion
             }
+
             MetricCard {
                 Layout.fillWidth: true
                 Layout.preferredHeight: dashboard.metricCardheight
-                CircularProgressBar { rawValue: 45 }
+                title: "Total Disease"
+
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    CircularProgressBar {
+                        id: diseaseProgress
+                        width: 100
+                        height: 100
+                        rawValue: uniqueDiseaseCount
+                        maxValue: 38
+                        progressColor: "#55aaff"
+                        text: "Diseases"
+                        textShowValue: true
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
             }
         }
 
-        // Your chart sections (unchanged)
-        RowLayout {
+        ChartCard {
+            id: chartCard
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 16
-            ChartCard {
-                Layout.fillWidth: true
-                Layout.preferredHeight: dashboard.height * 0.40
-            }
-        }
+            Layout.preferredHeight: dashboard.height * 0.45
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 16
-            Layout.fillHeight: true
-            PieCard {
-                Layout.fillWidth: true;
-                Layout.preferredHeight: dashboard.chartHeight
-            }
-            PieCard {
-                Layout.fillWidth: true;
-                Layout.preferredHeight: dashboard.chartHeight
-
+            BusyIndicator {
+                id: busy
+                visible: true
+                anchors.centerIn: parent
             }
         }
     }
 
-    // ==================== Safe Device Selection ====================
     Connections {
-        target: DeviceModel
+        target: ResearcherDataService
 
-        function onDeviceAdded(id) {
-            console.log("QML: Device added:", id)
-            Qt.callLater(updateFirstDevice)
+        function onInferencesFetched(records) {
+            console.log("Data fetched:", records.length, "records")
+            busy.visible = true
+            analysisTimer.start()
         }
 
-        function onCountChanged() {
-            console.log("QML: Device count changed to", DeviceModel.count)
-            Qt.callLater(updateFirstDevice)
+        function onErrorOccurred(error) {
+            console.error("DataService error:", error)
         }
     }
 
-    function updateFirstDevice() {
-        if (DeviceModel.count > 0) {
-            var dev = DeviceModel.getDeviceByIndex(0)
-            if (dev) {
-                dashboard.firstDevice = dev
-                console.log("QML: firstDevice successfully set to", dev.deviceId)
+    Connections {
+        target: StatisticalAnalyzer
+
+        function onAnalysisCompleted(analysisName, result) {
+            console.log("Analysis completed:", analysisName)
+            if (analysisName === "Disease By Region") {
+                updateSummaryData()
             }
-        } else {
-            dashboard.firstDevice = null
         }
     }
 
     Component.onCompleted: {
-        console.log("Dashboard loaded - count:", DeviceModel.count)
-        Qt.callLater(updateFirstDevice)
+        updateSummaryData()
     }
 }

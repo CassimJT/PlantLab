@@ -91,6 +91,7 @@ files = [
 "ui/dashboard/component/DHTMeter.qml",
 "ui/dashboard/component/MetricCard.qml",
 "ui/dashboard/component/PieCard.qml",
+"ui/dashboard/component/SummaryCard.qml",
 "ui/data/DataExplorerPage.qml",
 "ui/data/componets/FileView.qml",
 "ui/data/componets/PropertySideBar.qml",

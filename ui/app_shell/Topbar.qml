@@ -44,7 +44,7 @@ Rectangle {
                         y = menuButton.height
                     }
 
-                    MenuItem {
+                    /*MenuItem {
                         icon.source: "qrc:/assets/topBar/pest.svg"
                         text: qsTr("Live Pest Monitor")
                         onClicked: {
@@ -60,7 +60,7 @@ Rectangle {
                         }
                     }
 
-                    MenuSeparator{}
+                    MenuSeparator{}*/
 
                     MenuItem {
                         icon.source: "qrc:/assets/topBar/infarence.svg"

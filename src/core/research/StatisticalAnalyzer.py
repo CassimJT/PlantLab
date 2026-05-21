@@ -1051,7 +1051,7 @@ class StatisticalAnalyzer(QObject):
 
     @Slot(result="QVariantMap")
     def getSummaryStatistics(self):
-        """Return summary statistics for the dashboard - only 3 cards"""
+        """Return summary statistics for the dashboard"""
         disease_freq = self._results.get("disease_frequency", {})
         disease_region = self._results.get("disease_by_region", {})
 
@@ -1062,10 +1062,14 @@ class StatisticalAnalyzer(QObject):
         # Get most affected region
         most_affected_region = disease_region.get("region_with_most_diseases", "Unknown")
 
+        # Get total unique diseases
+        total_diseases = len(disease_freq.get("diseases", []))
+
         return {
             "total_records": disease_freq.get("total_records", 0),
             "top_disease": top_disease,
-            "most_affected_region": most_affected_region
+            "most_affected_region": most_affected_region,
+            "total_diseases": total_diseases  # ADD THIS LINE
         }
     @Slot()
     def debugChartMapper(self):
