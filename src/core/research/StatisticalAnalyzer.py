@@ -132,6 +132,7 @@ class ChartMapper(QObject):
     barDataChanged = Signal()
     lineDataChanged = Signal()
     scatterDataChanged = Signal()
+    infectionRateDataChanged = Signal()  # Signal for grouped bar chart
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -143,6 +144,11 @@ class ChartMapper(QObject):
         self._lineCategories = []
 
         self._scatterPoints = []
+
+        # Grouped bar chart data for Infection Rate Comparison
+        self._infectionRateCategories = []   # Varieties
+        self._diseaseGroups = []              # Disease names
+        self._infectionRateValuesMatrix = []  # 2D array
 
     # =======================================================
     # Properties for Bar Chart
@@ -166,6 +172,24 @@ class ChartMapper(QObject):
     def barCount(self):
         """Returns number of bars"""
         return len(self._barValues)
+
+    # =======================================================
+    # Properties for Infection Rate (Grouped Bar Chart)
+    # =======================================================
+    @Property("QVariantList", notify=infectionRateDataChanged)
+    def infectionRateCategories(self):
+        """Returns varieties for grouped bar chart X-axis"""
+        return self._infectionRateCategories
+
+    @Property("QVariantList", notify=infectionRateDataChanged)
+    def diseaseGroups(self):
+        """Returns disease groups for grouped bar chart"""
+        return self._diseaseGroups
+
+    @Property("QVariantList", notify=infectionRateDataChanged)
+    def infectionRateValuesMatrix(self):
+        """Returns 2D values matrix for grouped bar chart"""
+        return self._infectionRateValuesMatrix
 
     # =======================================================
     # Properties for Line Chart
@@ -223,13 +247,20 @@ class ChartMapper(QObject):
             print(f"[ChartMapper] Bar chart updated: {len(self._barCategories)} diseases")
 
         elif analysis_type == "Infection Rate Comparison":
-            # Update bar chart with variety data
+            # Update grouped bar chart data
             varieties = result.get("varieties", [])
-            self._barCategories = [v["name"] for v in varieties]
-            self._barValues = [v["total_infections"] for v in varieties]
-            self._barSeriesName = "Infection Rate by Variety"
-            self.barDataChanged.emit()
-            print(f"[ChartMapper] Bar chart updated: {len(self._barCategories)} varieties")
+            diseases = result.get("diseases", [])
+            values_matrix = result.get("values_matrix", [])
+
+            print(f"[ChartMapper] Infection Rate Comparison - Varieties: {len(varieties)}, Diseases: {len(diseases)}")
+            if values_matrix:
+                print(f"[ChartMapper] Values matrix shape: {len(values_matrix)} x {len(values_matrix[0]) if values_matrix else 0}")
+
+            self._infectionRateCategories = varieties
+            self._diseaseGroups = diseases
+            self._infectionRateValuesMatrix = values_matrix
+            self.infectionRateDataChanged.emit()
+            print(f"[ChartMapper] Grouped bar chart updated: {len(varieties)} varieties, {len(diseases)} diseases")
 
         elif analysis_type == "Variety Susceptibility":
             # Get the scatter points directly from the result
@@ -250,8 +281,6 @@ class ChartMapper(QObject):
             self._scatterPoints = points
             self.scatterDataChanged.emit()
             print(f"[ChartMapper] Scatter chart updated: {len(points)} points")
-            if points:
-                print(f"[ChartMapper] First point variety: {points[0].get('variety', 'N/A')}")
 
         elif analysis_type == "Disease By Region":
             lines_data = result.get("lines_data", [])
@@ -276,9 +305,13 @@ class ChartMapper(QObject):
         self._lineSeries = []
         self._lineCategories = []
         self._scatterPoints = []
+        self._infectionRateCategories = []
+        self._diseaseGroups = []
+        self._infectionRateValuesMatrix = []
         self.barDataChanged.emit()
         self.lineDataChanged.emit()
         self.scatterDataChanged.emit()
+        self.infectionRateDataChanged.emit()
         print("[ChartMapper] All chart data cleared")
 
 
@@ -365,8 +398,9 @@ class PlotDataModel(QObject):
     @Slot(str, "QVariant")
     def setPlotData(self, chartType, data):
         """Set plot data for a specific chart type"""
-        if chartType in self._plotData:
-            self._plotData[chartType] = data
+        if chartType in self._plotData or chartType == "grouped_bar":
+            if chartType != "grouped_bar":
+                self._plotData[chartType] = data
             self.plotDataChanged.emit()
             print(f"[PlotModel] Updated {chartType} chart data")
 
@@ -416,6 +450,17 @@ class PlotDataModel(QObject):
             }
             self._chartMapper.updateFromAnalysisResult(bar_result)
 
+        elif chartType == "grouped_bar" and "varieties" in data and "diseases" in data:
+            # Update ChartMapper for grouped bar chart
+            print(f"[PlotModel] Updating grouped_bar with {len(data['varieties'])} varieties and {len(data['diseases'])} diseases")
+            grouped_result = {
+                "analysis_type": "Infection Rate Comparison",
+                "varieties": data.get("varieties", []),
+                "diseases": data.get("diseases", []),
+                "values_matrix": data.get("values_matrix", [])
+            }
+            self._chartMapper.updateFromAnalysisResult(grouped_result)
+
         elif chartType == "scatter" and "points" in data:
             # Convert points to scatter model format
             points_data = []
@@ -425,16 +470,16 @@ class PlotDataModel(QObject):
                     "y": point.get("y", 0),
                     "z": point.get("z", point.get("count", 1)),
                     "label": point.get("label", ""),
-                    "variety": point.get("variety", ""),  # Preserve variety field
+                    "variety": point.get("variety", ""),
                     "disease": point.get("disease", "")
                 })
             self._scatterModel.setDataList(points_data)
             print(f"[PlotModel] Updated scatter model with {len(points_data)} points")
 
-            # Also update ChartMapper for 2D scatter charts with the original points
+            # Also update ChartMapper for 2D scatter charts
             scatter_result = {
                 "analysis_type": "Variety Susceptibility",
-                "scatter_points": data.get("points", []),  # Pass the original points with variety field
+                "scatter_points": data.get("points", []),
                 "varieties": data.get("varieties_for_mapper", [])
             }
             self._chartMapper.updateFromAnalysisResult(scatter_result)
@@ -634,6 +679,13 @@ class StatisticalAnalyzer(QObject):
                 self.analysisError.emit(analysis_name, "No data available")
                 return
 
+            # DEBUG: Print all records for Local tomato
+            print("\n=== DEBUG: Local tomato records ===")
+            local_tomato_records = [r for r in records if r.get("variaty") == "Local tomato"]
+            print(f"Total Local tomato records: {len(local_tomato_records)}")
+            for r in local_tomato_records:
+                print(f"  Disease: {r.get('diseasname')}, Location: {r.get('location')}, Confidence: {r.get('confidence')}")
+
             variety_disease_map = defaultdict(lambda: Counter())
             variety_counts = Counter()
 
@@ -642,6 +694,15 @@ class StatisticalAnalyzer(QObject):
                 disease = record.get("diseasname", "Unknown")
                 variety_disease_map[variety][disease] += 1
                 variety_counts[variety] += 1
+
+            # DEBUG: Print counts for Local tomato
+            print("\n=== DEBUG: Local tomato counts ===")
+            local_tomato_diseases = variety_disease_map.get("Local tomato", {})
+            local_tomato_total = variety_counts.get("Local tomato", 0)
+            print(f"Total infections: {local_tomato_total}")
+            for disease, count in local_tomato_diseases.items():
+                percentage = (count / local_tomato_total) * 100 if local_tomato_total > 0 else 0
+                print(f"  {disease}: {count} infections ({percentage:.1f}%)")
 
             result = {
                 "analysis_type": analysis_name,
@@ -662,6 +723,7 @@ class StatisticalAnalyzer(QObject):
                         "percentage": percentage
                     })
 
+                    # Each disease-variety pair becomes ONE scatter point
                     scatter_points.append({
                         "x": total_for_variety,
                         "y": percentage,
@@ -678,7 +740,12 @@ class StatisticalAnalyzer(QObject):
                     "susceptible_diseases": susceptible_diseases
                 })
 
-            # Add scatter_points to result so ChartMapper can use them
+            # DEBUG: Print scatter points for Local tomato
+            print("\n=== DEBUG: Scatter points for Local tomato ===")
+            local_scatter = [p for p in scatter_points if p.get("variety") == "Local tomato"]
+            for p in local_scatter:
+                print(f"  Disease: {p['disease']}, X={p['x']}, Y={p['y']}%, Count={p['count']}")
+
             result["scatter_points"] = scatter_points
 
             if self._plotModel:
@@ -698,9 +765,8 @@ class StatisticalAnalyzer(QObject):
         except Exception as e:
             self.analysisError.emit(analysis_name, str(e))
             print(f"[StatisticalAnalyzer] Error in {analysis_name}: {e}")
-
     # =======================================================
-    # 3. Infection Rate Comparison -> BAR CHART
+    # 3. Infection Rate Comparison -> GROUPED BAR CHART
     # =======================================================
     @Slot()
     def computeInfectionRateComparison(self):
@@ -714,63 +780,98 @@ class StatisticalAnalyzer(QObject):
                 self.analysisError.emit(analysis_name, "No data available")
                 return
 
-            variety_infection_rates = defaultdict(lambda: {"total": 0, "diseases": Counter()})
+            # Track: variety -> disease -> count
+            variety_disease_map = defaultdict(lambda: defaultdict(int))
+            variety_totals = defaultdict(int)
+
+            # Also track diseases across all varieties for ordering
+            all_diseases = set()
 
             for record in records:
                 variety = record.get("variaty", "Unknown")
                 disease = record.get("diseasname", "Unknown")
-                variety_infection_rates[variety]["total"] += 1
-                variety_infection_rates[variety]["diseases"][disease] += 1
+                variety_disease_map[variety][disease] += 1
+                variety_totals[variety] += 1
+                all_diseases.add(disease)
 
+            # Sort diseases by overall frequency (most common first)
+            disease_global_counts = defaultdict(int)
+            for record in records:
+                disease = record.get("diseasname", "Unknown")
+                disease_global_counts[disease] += 1
+
+            # Get top N diseases to show (limit to avoid overcrowding)
+            DISPLAY_LIMIT = 8
+            top_diseases = sorted(disease_global_counts.items(), key=lambda x: x[1], reverse=True)
+            display_diseases = [d[0] for d in top_diseases[:DISPLAY_LIMIT]]
+
+            # Add "Other" category for remaining diseases
+            if len(top_diseases) > DISPLAY_LIMIT:
+                display_diseases.append("Other Diseases")
+
+            # Prepare data for grouped bar chart
+            varieties_list = sorted(variety_totals.keys(), key=lambda x: variety_totals[x], reverse=True)
+            varieties_list = varieties_list[:15]  # Limit to top 15 varieties to avoid overcrowding
+
+            # Create a matrix of values: [variety][disease_index]
+            values_matrix = []
+
+            for variety in varieties_list:
+                variety_row = []
+                for disease in display_diseases:
+                    if disease == "Other Diseases":
+                        # Sum up all diseases not in top list
+                        other_count = sum(
+                            count for d, count in variety_disease_map[variety].items()
+                            if d not in display_diseases
+                        )
+                        variety_row.append(other_count)
+                    else:
+                        variety_row.append(variety_disease_map[variety].get(disease, 0))
+                values_matrix.append(variety_row)
+
+            # Prepare result with detailed breakdown
             result = {
                 "analysis_type": analysis_name,
-                "varieties": []
+                "varieties": varieties_list,
+                "diseases": display_diseases,
+                "values_matrix": values_matrix,
+                "varieties_detail": []
             }
 
-            comparison_data = []
-
-            for variety, data in variety_infection_rates.items():
-                total = data["total"]
-                comparison_data.append({
-                    "variety": variety,
-                    "total_infections": total
-                })
-
-                result["varieties"].append({
+            # Build detailed variety info
+            for i, variety in enumerate(varieties_list):
+                variety_detail = {
                     "name": variety,
-                    "total_infections": total,
-                    "infection_rate": total,
-                    "disease_breakdown": [
-                        {
-                            "name": name,
+                    "total_infections": variety_totals[variety],
+                    "disease_breakdown": []
+                }
+                for j, disease in enumerate(display_diseases):
+                    count = values_matrix[i][j]
+                    if count > 0:
+                        percentage = round((count / variety_totals[variety]) * 100, 2) if variety_totals[variety] > 0 else 0
+                        variety_detail["disease_breakdown"].append({
+                            "name": disease,
                             "count": count,
-                            "percentage": round((count / total) * 100, 2)
-                        }
-                        for name, count in data["diseases"].most_common()
-                    ]
-                })
+                            "percentage": percentage
+                        })
+                result["varieties_detail"].append(variety_detail)
 
-            comparison_data.sort(key=lambda x: x["total_infections"], reverse=True)
-
+            # Update the plot model with grouped bar data
             if self._plotModel:
                 plot_data = {
-                    "title": "Infection Rate by Variety",
+                    "title": "Infection Rate by Variety & Disease",
                     "xAxis": "Variety",
-                    "yAxis": "Total Infections",
-                    "categories": [item["variety"] for item in comparison_data],
-                    "values": [item["total_infections"] for item in comparison_data]
+                    "yAxis": "Number of Infections",
+                    "varieties": varieties_list,
+                    "diseases": display_diseases,
+                    "values_matrix": values_matrix
                 }
-                self._plotModel.setPlotData("bar", plot_data)
-
-                infection_result = {
-                    "analysis_type": "Infection Rate Comparison",
-                    "varieties": result["varieties"]
-                }
-                self._plotModel.chartMapper.updateFromAnalysisResult(infection_result)
+                self._plotModel.setPlotData("grouped_bar", plot_data)
 
             self._storeResult("infection_rate_comparison", result)
             self.analysisCompleted.emit(analysis_name, result)
-            print(f"[StatisticalAnalyzer] Completed {analysis_name}")
+            print(f"[StatisticalAnalyzer] Completed {analysis_name} with {len(varieties_list)} varieties and {len(display_diseases)} disease groups")
 
         except Exception as e:
             self.analysisError.emit(analysis_name, str(e))
@@ -831,6 +932,23 @@ class StatisticalAnalyzer(QObject):
                         "value": float(count)
                     })
 
+            # Find region with highest diseases
+            region_with_most_diseases = None
+            max_disease_count = 0
+            for region, diseases in region_disease_map.items():
+                total = sum(diseases.values())
+                if total > max_disease_count:
+                    max_disease_count = total
+                    region_with_most_diseases = region
+
+            # Find most frequent diseases overall
+            disease_frequency = Counter()
+            for record in records:
+                disease = record.get("diseasname", "Unknown")
+                disease_frequency[disease] += 1
+
+            most_frequent_diseases = disease_frequency.most_common(5)
+
             result = {
                 "analysis_type": analysis_name,
                 "total_records": len(records),
@@ -839,6 +957,11 @@ class StatisticalAnalyzer(QObject):
                 "regions": regions_list,
                 "diseases": diseases_list,
                 "lines_data": lines_data,
+                "region_with_most_diseases": region_with_most_diseases,
+                "most_frequent_diseases": [
+                    {"name": name, "count": count}
+                    for name, count in most_frequent_diseases
+                ],
                 "regions_detail": []
             }
 
@@ -867,13 +990,94 @@ class StatisticalAnalyzer(QObject):
                 }
                 self._plotModel.setPlotData("surface", plot_data)
                 self._plotModel.chartMapper.updateFromAnalysisResult(result)
+
             self._storeResult("disease_by_region", result)
             self.analysisCompleted.emit(analysis_name, result)
             print(f"[StatisticalAnalyzer] Completed with {len(lines_data)} disease lines across {len(regions_list)} regions")
+            print(f"[StatisticalAnalyzer] Region with most diseases: {region_with_most_diseases} ({max_disease_count} infections)")
+            print(f"[StatisticalAnalyzer] Most frequent diseases: {most_frequent_diseases[:3]}")
 
         except Exception as e:
             self.analysisError.emit(analysis_name, str(e))
             print(f"[StatisticalAnalyzer] Error: {e}")
+
+    # =======================================================
+    # Additional Helper Methods for QML
+    # =======================================================
+
+    @Slot(result=str)
+    def getRegionWithMostDiseases(self):
+        """Return the region with the highest number of disease cases"""
+        result = self._results.get("disease_by_region", {})
+        region = result.get("region_with_most_diseases", "Unknown")
+        if region != "Unknown":
+            # Find the count for that region
+            for region_detail in result.get("regions_detail", []):
+                if region_detail.get("name") == region:
+                    return f"{region} ({region_detail.get('total_infections', 0)} cases)"
+        return "No data available"
+
+    @Slot(int, result="QVariantList")
+    def getMostFrequentDiseases(self, limit=5):
+        """Return the most frequent diseases across all data"""
+        result = self._results.get("disease_by_region", {})
+        diseases = result.get("most_frequent_diseases", [])
+        return diseases[:limit]
+
+    @Slot(int, result="QVariantList")
+    def getTopDiseases(self, limit=10):
+        """Return top N diseases from disease frequency analysis"""
+        result = self._results.get("disease_frequency", {})
+        diseases = result.get("diseases", [])
+        return diseases[:limit]
+
+    @Slot(int, result="QVariantList")
+    def getTopVarietiesByInfection(self, limit=10):
+        """Return top N varieties with highest infection rates"""
+        result = self._results.get("infection_rate_comparison", {})
+        varieties = result.get("varieties_detail", [])
+        # Sort by total_infections descending
+        varieties_sorted = sorted(varieties, key=lambda x: x.get("total_infections", 0), reverse=True)
+        return varieties_sorted[:limit]
+
+    @Slot(str, result="QVariantList")
+    def getDiseasesForVariety(self, varietyName):
+        """Get disease breakdown for a specific variety"""
+        result = self._results.get("infection_rate_comparison", {})
+        for variety in result.get("varieties_detail", []):
+            if variety.get("name") == varietyName:
+                return variety.get("disease_breakdown", [])
+        return []
+
+    @Slot(result="QVariantMap")
+    def getSummaryStatistics(self):
+        """Return summary statistics for the dashboard - only 3 cards"""
+        disease_freq = self._results.get("disease_frequency", {})
+        disease_region = self._results.get("disease_by_region", {})
+
+        # Get top disease
+        top_disease_data = disease_freq.get("diseases", [{}])[0] if disease_freq.get("diseases") else {}
+        top_disease = top_disease_data.get("name", "Unknown")
+
+        # Get most affected region
+        most_affected_region = disease_region.get("region_with_most_diseases", "Unknown")
+
+        return {
+            "total_records": disease_freq.get("total_records", 0),
+            "top_disease": top_disease,
+            "most_affected_region": most_affected_region
+        }
+    @Slot()
+    def debugChartMapper(self):
+        """Debug method to check ChartMapper data"""
+        if self._plotModel and self._plotModel.chartMapper:
+            mapper = self._plotModel.chartMapper
+            print("=== ChartMapper Debug ===")
+            print(f"infectionRateCategories: {mapper.infectionRateCategories}")
+            print(f"diseaseGroups: {mapper.diseaseGroups}")
+            print(f"infectionRateValuesMatrix: {mapper.infectionRateValuesMatrix}")
+            print(f"barCategories: {mapper.barCategories}")
+            print(f"barValues: {mapper.barValues}")
 
     # =======================================================
     # Run All Analyses

@@ -1,9 +1,9 @@
 import QtQuick 2.15
 import QtCharts
-import QtQuick.Controls
+import QtQuick.Controls 2.15
 
 Item {
-    id: barSeriesChart
+    id: diseaseFrequencyChart
     property var chartMapper: null
     property string chartTitle: "Disease Frequency Distribution"
     property var currentCategories: []
@@ -18,20 +18,25 @@ Item {
 
     function updateFromMapper() {
         if (!chartMapper) return
-        var categories = chartMapper.barCategories
-        var values = chartMapper.barValues
-        var seriesName = chartMapper.barSeriesName || "Infections"
 
-        if (seriesName && seriesName !== "Infections") {
-            chartTitle = seriesName
-        }
+        var seriesName = chartMapper.barSeriesName || ""
 
-        if (categories && values && categories.length > 0) {
-            updateBarData(categories, values, seriesName)
+        // ONLY update if this is Disease Frequency data
+        if (seriesName === "Disease Frequency" || seriesName === "Infections") {
+            var categories = chartMapper.barCategories
+            var values = chartMapper.barValues
+
+            if (seriesName && seriesName !== "Infections") {
+                chartTitle = seriesName
+            }
+
+            if (categories && values && categories.length > 0) {
+                updateBarData(categories, values, seriesName)
+            }
         }
     }
 
-    // Subtle background
+    // Rest of the component remains the same...
     Rectangle {
         anchors.fill: parent
         color: "#FAFAFA"
@@ -39,7 +44,6 @@ Item {
         z: -1
     }
 
-    // Custom scroll bar handle
     Rectangle {
         id: scrollHandle
         anchors.bottom: parent.bottom
@@ -80,7 +84,6 @@ Item {
         clip: true
         flickableDirection: Flickable.HorizontalFlick
 
-        // Scroll indicator text
         Label {
             anchors.bottom: parent.bottom
             anchors.right: parent.right
@@ -117,17 +120,6 @@ Item {
                     color: "#42A5F5"
                     borderColor: "#1E88E5"
                     borderWidth: 1
-
-                    onClicked: (index) => {
-                        var category = axisX.categories[index]
-                        var value = mainBarSet.values[index]
-                        var maxVal = currentValues.length > 0 ? Math.max.apply(null, currentValues) : 1
-                        var percentage = ((value / maxVal) * 100).toFixed(1)
-
-                        tooltipText.text = category + " | Infections: " + value + " | " + percentage + "%"
-                        tooltip.visible = true
-                        hideTimer.restart()
-                    }
                 }
             }
 
@@ -150,7 +142,6 @@ Item {
         }
     }
 
-    // Professional title
     Item {
         anchors.top: parent.top
         anchors.left: parent.left
@@ -162,7 +153,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: 15
             anchors.verticalCenter: parent.verticalCenter
-            text: barSeriesChart.chartTitle
+            text: diseaseFrequencyChart.chartTitle
             font.bold: true
             font.pixelSize: 13
             color: "#333333"
@@ -177,7 +168,6 @@ Item {
         }
     }
 
-    // Tooltip popup - fixed at top center
     Rectangle {
         id: tooltip
         visible: false
@@ -199,7 +189,6 @@ Item {
             horizontalAlignment: Text.AlignCenter
         }
 
-        // Decorative line at top
         Rectangle {
             anchors.top: parent.top
             anchors.left: parent.left
@@ -220,7 +209,6 @@ Item {
         currentCategories = categories
         currentValues = values
 
-        // Clear existing barsets
         while (barSeries.count > 0) {
             barSeries.remove(barSeries.at(0))
         }
@@ -235,7 +223,6 @@ Item {
             barSet.borderColor = "#1E88E5"
             barSet.borderWidth = 1
 
-            // Connect click handler
             barSet.clicked.connect(function(index) {
                 var category = categories[index]
                 var value = values[index]
@@ -247,7 +234,6 @@ Item {
 
             axisY.max = maxVal + Math.max(1, maxVal * 0.15)
 
-            // Label rotation based on number of categories
             if (categories.length > 15) {
                 axisX.labelsAngle = 75
                 axisX.labelsFont.pointSize = 9

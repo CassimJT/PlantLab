@@ -1,12 +1,13 @@
 import QtQuick 2.15
 import QtCharts
-import QtQuick.Controls
+import QtQuick.Controls 2.15
 
 Item {
     id: scatterSeriesChart
     property var chartMapper: null
     property string chartTitle: "Variety Susceptibility Analysis"
     property var currentPoints: []
+    property int minSampleSize: 3
 
     onChartMapperChanged: {
         if (chartMapper) {
@@ -18,6 +19,7 @@ Item {
     function updateFromMapper() {
         if (!chartMapper) return
         var points = chartMapper.scatterPoints
+        console.log("ScatterChart: Received", points?.length, "points")
         if (points && points.length > 0) {
             updateScatterData(points)
         }
@@ -46,28 +48,13 @@ Item {
             axisY: axisY
             color: "#66BB6A"
             borderColor: "#4CAF50"
-            markerSize: 12
+            markerSize: 10
             markerShape: ScatterSeries.MarkerShapeCircle
-            name: "Low Susceptibility (0-33%)"
+            name: "Low (0-33%)"
 
             onHovered: (point, hovered) => {
-                if (hovered && point) {
-                    var varietyName = "Unknown"
-                    for (var i = 0; i < currentPoints.length; i++) {
-                        if (Math.abs(currentPoints[i].x - point.x) < 0.1 &&
-                            Math.abs(currentPoints[i].y - point.y) < 0.1) {
-                            varietyName = currentPoints[i].variety || currentPoints[i].name || "Unknown"
-                            break
-                        }
-                    }
-                    tooltipText.text = "Variety: " + varietyName +
-                                       "\nSusceptibility: " + point.y.toFixed(1) + "%" +
-                                       "\nInfections: " + point.x.toFixed(0)
-                    tooltip.visible = true
-                    hideTimer.restart()
-                } else if (!hovered) {
-                    hideTimer.start()
-                }
+                if (hovered && point) showTooltip(point)
+                else if (!hovered) hideTimer.start()
             }
         }
 
@@ -77,28 +64,13 @@ Item {
             axisY: axisY
             color: "#FFA726"
             borderColor: "#F57C00"
-            markerSize: 12
+            markerSize: 10
             markerShape: ScatterSeries.MarkerShapeCircle
-            name: "Medium Susceptibility (34-66%)"
+            name: "Medium (34-66%)"
 
             onHovered: (point, hovered) => {
-                if (hovered && point) {
-                    var varietyName = "Unknown"
-                    for (var i = 0; i < currentPoints.length; i++) {
-                        if (Math.abs(currentPoints[i].x - point.x) < 0.1 &&
-                            Math.abs(currentPoints[i].y - point.y) < 0.1) {
-                            varietyName = currentPoints[i].variety || currentPoints[i].name || "Unknown"
-                            break
-                        }
-                    }
-                    tooltipText.text = "Variety: " + varietyName +
-                                       "\nSusceptibility: " + point.y.toFixed(1) + "%" +
-                                       "\nInfections: " + point.x.toFixed(0)
-                    tooltip.visible = true
-                    hideTimer.restart()
-                } else if (!hovered) {
-                    hideTimer.start()
-                }
+                if (hovered && point) showTooltip(point)
+                else if (!hovered) hideTimer.start()
             }
         }
 
@@ -108,28 +80,13 @@ Item {
             axisY: axisY
             color: "#EF5350"
             borderColor: "#C62828"
-            markerSize: 12
+            markerSize: 10
             markerShape: ScatterSeries.MarkerShapeCircle
-            name: "High Susceptibility (67-100%)"
+            name: "High (67-100%)"
 
             onHovered: (point, hovered) => {
-                if (hovered && point) {
-                    var varietyName = "Unknown"
-                    for (var i = 0; i < currentPoints.length; i++) {
-                        if (Math.abs(currentPoints[i].x - point.x) < 0.1 &&
-                            Math.abs(currentPoints[i].y - point.y) < 0.1) {
-                            varietyName = currentPoints[i].variety || currentPoints[i].name || "Unknown"
-                            break
-                        }
-                    }
-                    tooltipText.text = "Variety: " + varietyName +
-                                       "\nSusceptibility: " + point.y.toFixed(1) + "%" +
-                                       "\nInfections: " + point.x.toFixed(0)
-                    tooltip.visible = true
-                    hideTimer.restart()
-                } else if (!hovered) {
-                    hideTimer.start()
-                }
+                if (hovered && point) showTooltip(point)
+                else if (!hovered) hideTimer.start()
             }
         }
 
@@ -139,20 +96,19 @@ Item {
             titleText: "Total Infections per Variety"
             titleVisible: true
             gridVisible: true
-            labelsFont.pointSize: 10
         }
 
         ValueAxis {
             id: axisY
             min: 0
-            max: 110
+            max: 100
             titleText: "Disease Susceptibility (%)"
             titleVisible: true
             gridVisible: true
-            labelsFont.pointSize: 10
         }
     }
 
+    // Title bar
     Item {
         anchors.top: parent.top
         anchors.left: parent.left
@@ -164,7 +120,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: 15
             anchors.verticalCenter: parent.verticalCenter
-            text: scatterSeriesChart.chartTitle
+            text: scatterSeriesChart.chartTitle + " (min " + minSampleSize + " infections)"
             font.bold: true
             font.pixelSize: 13
             color: "#333333"
@@ -179,26 +135,60 @@ Item {
         }
     }
 
-    // Tooltip popup - fixed at top center (same as bar chart)
+    // Enhanced tooltip
     Rectangle {
         id: tooltip
         visible: false
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.topMargin: 50
-        width: tooltipText.implicitWidth + 32
-        height: tooltipText.implicitHeight + 20
+        width: 280
+        height: 110
         color: "#2C3E50"
+        opacity: 0.95
         radius: 8
         z: 10
 
-        Label {
-            id: tooltipText
-            anchors.centerIn: parent
-            color: "white"
-            font.pixelSize: 11
-            font.weight: Font.Medium
-            horizontalAlignment: Text.AlignCenter
+        Column {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 6
+
+            Label {
+                id: tooltipVariety
+                width: parent.width
+                color: "#FF9800"
+                font.pixelSize: 13
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+            }
+
+            Label {
+                id: tooltipDisease
+                width: parent.width
+                color: "#FF9800"
+                font.pixelSize: 11
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+            }
+
+            Label {
+                id: tooltipStats
+                width: parent.width
+                color: "white"
+                font.pixelSize: 11
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Label {
+                id: tooltipPercent
+                width: parent.width
+                color: "#4ECDC4"
+                font.pixelSize: 12
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+            }
         }
 
         Rectangle {
@@ -211,12 +201,13 @@ Item {
         }
     }
 
+    // Simple legend
     Rectangle {
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.margins: 10
-        width: 160
-        height: 95
+        width: 150
+        height: 110
         color: "white"
         radius: 4
         border.color: "#E0E0E0"
@@ -230,17 +221,28 @@ Item {
             Row {
                 spacing: 8
                 Rectangle { width: 12; height: 12; radius: 6; color: "#66BB6A" }
-                Label { text: "Low Susceptibility"; font.pixelSize: 10; color: "#666" }
+                Label { text: "Low (0-33%)"; font.pixelSize: 10; color: "#666" }
             }
             Row {
                 spacing: 8
                 Rectangle { width: 12; height: 12; radius: 6; color: "#FFA726" }
-                Label { text: "Medium Susceptibility"; font.pixelSize: 10; color: "#666" }
+                Label { text: "Medium (34-66%)"; font.pixelSize: 10; color: "#666" }
             }
             Row {
                 spacing: 8
                 Rectangle { width: 12; height: 12; radius: 6; color: "#EF5350" }
-                Label { text: "High Susceptibility"; font.pixelSize: 10; color: "#666" }
+                Label { text: "High (67-100%)"; font.pixelSize: 10; color: "#666" }
+            }
+            Rectangle {
+                width: 130
+                height: 1
+                color: "#E0E0E0"
+            }
+            Label {
+                text: "min " + minSampleSize + " infections per variety"
+                font.pixelSize: 9
+                color: "#999"
+                font.italic: true
             }
         }
     }
@@ -251,35 +253,78 @@ Item {
         onTriggered: tooltip.visible = false
     }
 
+    function showTooltip(point) {
+        console.log("Tooltip triggered for point:", point.x, point.y)
+
+        for (var i = 0; i < currentPoints.length; i++) {
+            if (Math.abs(currentPoints[i].x - point.x) < 0.1 &&
+                Math.abs(currentPoints[i].y - point.y) < 0.1) {
+
+                var data = currentPoints[i]
+                console.log("Found data:", data.variety, data.disease, data.count, data.x, data.y)
+
+                tooltipVariety.text = data.variety || "Unknown"
+                tooltipDisease.text = "Disease: " + (data.disease || "N/A")
+                tooltipStats.text = data.count + " out of " + data.x + " total infections"
+                tooltipPercent.text = data.y.toFixed(1) + "% of infections"
+                tooltip.visible = true
+                hideTimer.restart()
+                break
+            }
+        }
+    }
+
     function updateScatterData(points) {
         if (!points) return
-        currentPoints = points
+
+        console.log("updateScatterData called with", points.length, "total points")
+
+        // Filter points with minimum sample size
+        var filteredPoints = []
+        var filteredOut = 0
+        for (var i = 0; i < points.length; i++) {
+            if (points[i].x >= minSampleSize) {
+                filteredPoints.push(points[i])
+            } else {
+                filteredOut++
+            }
+        }
+
+        console.log("Filtered out", filteredOut, "points with <", minSampleSize, "infections")
+        console.log("Keeping", filteredPoints.length, "points")
+
+        currentPoints = filteredPoints
 
         lowSeries.clear()
         mediumSeries.clear()
         highSeries.clear()
 
-        for (var i = 0; i < points.length; i++) {
-            var p = points[i]
+        var maxX = 0
+        for (var i = 0; i < filteredPoints.length; i++) {
+            var p = filteredPoints[i]
             var percentage = p.y
 
             if (percentage < 33) {
                 lowSeries.append(p.x, p.y)
+                console.log("Low point:", p.variety, "-", p.disease, ":", p.x, "infections,", p.y, "%")
             } else if (percentage < 66) {
                 mediumSeries.append(p.x, p.y)
+                console.log("Medium point:", p.variety, "-", p.disease, ":", p.x, "infections,", p.y, "%")
             } else {
                 highSeries.append(p.x, p.y)
+                console.log("HIGH point:", p.variety, "-", p.disease, ":", p.x, "infections,", p.y, "%")
             }
+
+            if (p.x > maxX) maxX = p.x
         }
 
-        if (points.length > 0) {
-            var maxX = 0
-            for (var i = 0; i < points.length; i++) {
-                if (points[i].x > maxX) maxX = points[i].x
-            }
-            axisX.max = maxX + Math.max(1, maxX * 0.15)
+        axisX.max = maxX > 0 ? maxX + Math.max(1, maxX * 0.15) : 10
+
+        // Update title with filtered count
+        if (filteredOut > 0) {
+            chartTitle = "Variety Susceptibility (" + filteredPoints.length + " varieties shown)"
         } else {
-            axisX.max = 10
+            chartTitle = "Variety Susceptibility Analysis"
         }
     }
 }
