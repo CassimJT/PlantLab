@@ -84,7 +84,7 @@ Rectangle {
                         Text {
                             id: topDiseaseText
                             text: root.top_deseas
-                            font.pixelSize: 14
+                            font.pixelSize: 13
                             font.bold: true
                             color: "#EF4444"
                             wrapMode: Text.WordWrap
@@ -118,9 +118,9 @@ Rectangle {
                         Text {
                             id: regionText
                             text: root.top_rigeon
-                            font.pixelSize: 14
+                            font.pixelSize: 13
                             font.bold: true
-                            color: "#3B82F6"
+                            color: "#333"
                             wrapMode: Text.WordWrap
                         }
                     }

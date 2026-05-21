@@ -23,13 +23,13 @@ Page {
         interval: 500
         repeat: false
         onTriggered: {
-            console.log("Running analysis...")
+            console.log("Running analysis...")  
             if (StatisticalAnalyzer) {
+                busy.visible = false
                 StatisticalAnalyzer.runAnalysis("Disease Frequency")
                 StatisticalAnalyzer.runAnalysis("Infection Rate Comparison")
                 StatisticalAnalyzer.runAnalysis("Disease By Region")
-                updateSummaryData()
-                busy.visible = false
+                updateSummaryData() 
             }
         }
     }
