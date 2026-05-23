@@ -6,6 +6,7 @@ files = [
 "main.py",
 "main.qml",
 "resource.qrc",
+"src/core/Utils/AppSettings.py",
 "src/core/auth/AuthApiClient.py",
 "src/core/auth/AuthService.py",
 "src/core/config/AppSettings.py",
