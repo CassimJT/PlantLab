@@ -13,12 +13,12 @@ Item {
 
     // value
     property real rawValue: 0
-    property real value: rawValue / 10.0
+    property real maxValue: 38
+    property real value: rawValue
 
     // General
     property bool roundCap: true
     property int startAngle: -240
-    property real maxValue: 500
     property int samples: 4
 
     // Bg Circle
@@ -31,10 +31,10 @@ Item {
     property int progressWidth: 16
 
     // Text
-    property string text: "%"
+    property string text: "Diseases"
     property bool textShowValue: true
     property string textFontFamily: "Segoe UI"
-    property int textSize: Math.max(10, 14 * scaleFactor)
+    property int textSize: Math.max(10, 12 * scaleFactor)
     property color textColor: "#7c7c7c"
 
     // icon scaling
@@ -65,7 +65,6 @@ Item {
             ctx.fillStyle = "#555"
 
             for (var i = 0; i < dots; i++) {
-
                 var ang = (i / dots) * Math.PI * 2
                 var x = cx + Math.cos(ang) * r
                 var y = cy + Math.sin(ang) * r
@@ -117,12 +116,12 @@ Item {
             }
         }
 
-        // air quality value
+        // value text (shows "n / total")
         Text {
             id: textProgress
 
             text: progress.textShowValue
-                  ? parseFloat(progress.value).toFixed(1)
+                  ? Math.floor(progress.value) + " / " + Math.floor(progress.maxValue)
                   : ""
 
             anchors.centerIn: parent
@@ -136,14 +135,14 @@ Item {
             elide: Text.ElideRight
         }
 
-        // air quality icon
+        // icon
         Image {
-            id: airIcon
+            id: diseaseIcon
 
             width: progress.iconSize
             height: width
 
-            source: "qrc:/Assert/icons8-air-quality-100.png"
+            source: "qrc:/Assert/icons8-disease-100.png"
             fillMode: Image.PreserveAspectFit
 
             anchors {

@@ -17,6 +17,18 @@ Page {
         }
     }
 
+    // Function to refresh all summary data
+    function refreshSummaryData() {
+        if (StatisticalAnalyzer) {
+            var stats = StatisticalAnalyzer.getSummaryStatistics()
+            console.log("Summary stats:", JSON.stringify(stats))
+
+            totalRecordsLabel.text = stats.total_records || "—"
+            topDiseaseLabel.text = stats.top_disease || "—"
+            regionImpactLabel.text = stats.most_affected_region || "—"
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -36,6 +48,7 @@ Page {
                 ComboBox {
                     id: analysisSelector
                     Layout.preferredWidth: 300
+                    Layout.preferredHeight: analysisBtn.height
                     model: [
                         "Disease Frequency",
                         "Variety Susceptibility",
@@ -43,22 +56,27 @@ Page {
                         "Disease By Region"
                     ]
 
-                    // Auto-run when selection changes
                     onCurrentIndexChanged: {
-                        if (root.visible) {   // only run if page is visible
+                        if (root.visible) {
                             callAnalysis(analysisSelector.currentText)
                         }
                     }
                 }
 
                 Button {
+                    id: analysisBtn
                     text: "Run Analysis"
                     onClicked: callAnalysis(analysisSelector.currentText)
                 }
 
                 Button {
-                    text: "Generate Report"
-                    onClicked: root.generateReport()
+                    id: analysisAllBtn
+                    text: "Run All Analysis"
+                    onClicked: {
+                        if (StatisticalAnalyzer) {
+                            StatisticalAnalyzer.runAllAnalyses()
+                        }
+                    }
                 }
 
                 Item { Layout.fillWidth: true }
@@ -71,7 +89,7 @@ Page {
             }
         }
 
-        // Summary Cards
+        // Summary Cards - 3 cards only
         Rectangle {
             Layout.fillWidth: true
             height: 110
@@ -82,31 +100,118 @@ Page {
                 anchors.margins: 12
                 spacing: 20
 
+                // Card 1: Total Records
                 Rectangle {
                     Layout.fillWidth: true
                     height: 80
+                    color: "white"
+                    radius: 8
+                    border.color: "#e5e7eb"
+                    border.width: 1
+
                     Column {
                         anchors.centerIn: parent
-                        Label { text: "Total Records" }
-                        Label { id: totalRecordsLabel; text: "—"; font.bold: true; font.pixelSize: 20 }
+                        spacing: 5
+
+                        Label {
+                            text: "TOTAL RECORDS"
+                            font.pixelSize: 11
+                            color: "#6B7280"
+                            font.bold: true
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                        Label {
+                            id: totalRecordsLabel
+                            text: "—"
+                            font.pixelSize: 28
+                            font.bold: true
+                            color: "#3B82F6"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                        Label {
+                            text: "total infections"
+                            font.pixelSize: 10
+                            color: "#9CA3AF"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
                     }
                 }
+
+                // Card 2: Top Disease
                 Rectangle {
                     Layout.fillWidth: true
                     height: 80
+                    color: "white"
+                    radius: 8
+                    border.color: "#e5e7eb"
+                    border.width: 1
+
                     Column {
                         anchors.centerIn: parent
-                        Label { text: "Top Category" }
-                        Label { id: topCategoryLabel; text: "—"; font.bold: true; font.pixelSize: 18 }
+                        spacing: 5
+
+                        Label {
+                            text: "TOP DISEASE"
+                            font.pixelSize: 11
+                            color: "#6B7280"
+                            font.bold: true
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                        Label {
+                            id: topDiseaseLabel
+                            text: "—"
+                            font.pixelSize: 16
+                            font.bold: true
+                            color: "#EF4444"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                        }
+                        Label {
+                            text: "most frequent"
+                            font.pixelSize: 10
+                            color: "#9CA3AF"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
                     }
                 }
+
+                // Card 3: Most Affected Region
                 Rectangle {
                     Layout.fillWidth: true
                     height: 80
+                    color: "white"
+                    radius: 8
+                    border.color: "#e5e7eb"
+                    border.width: 1
+
                     Column {
                         anchors.centerIn: parent
-                        Label { text: "Region Impact" }
-                        Label { id: regionImpactLabel; text: "—"; font.bold: true; font.pixelSize: 18 }
+                        spacing: 5
+
+                        Label {
+                            text: "MOST AFFECTED REGION"
+                            font.pixelSize: 11
+                            color: "#6B7280"
+                            font.bold: true
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                        Label {
+                            id: regionImpactLabel
+                            text: "—"
+                            font.pixelSize: 14
+                            font.bold: true
+                            color: "#8B5CF6"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                        }
+                        Label {
+                            text: "highest cases"
+                            font.pixelSize: 10
+                            color: "#9CA3AF"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
                     }
                 }
             }
@@ -120,21 +225,42 @@ Page {
             border.color: "#e5e7eb"
 
             StackLayout {
+                id: chartStack
                 anchors.fill: parent
                 anchors.margins: 12
                 currentIndex: {
                     switch (analysisSelector.currentText) {
-                        case "Disease Frequency":
-                        case "Infection Rate Comparison": return 0
-                        case "Variety Susceptibility":    return 1
-                        case "Disease By Region":         return 2
+                        case "Disease Frequency": return 0
+                        case "Infection Rate Comparison": return 1
+                        case "Variety Susceptibility": return 2
+                        case "Disease By Region": return 3
                         default: return 0
                     }
                 }
 
-                BarSeriesChart     { chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null }
-                ScatterSeriesChart { chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null }
-                PieSeriesChart    { chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null }   // your QtCharts version
+                // Disease Frequency Bar Chart
+                DiseaseFrequencyChart {
+                    id: diseaseFreqChart
+                    chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null
+                }
+
+                // Infection Rate Bar Chart
+                InfectionRateChart {
+                    id: infectionRateChart
+                    chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null
+                }
+
+                // Scatter Chart for Variety Susceptibility
+                ScatterSeriesChart {
+                    id: scatterChart
+                    chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null
+                }
+
+                // Pie/Line Chart for Disease By Region
+                PieSeriesChart {
+                    id: pieChart
+                    chartMapper: StatisticalAnalyzer ? StatisticalAnalyzer.plotModel.chartMapper : null
+                }
             }
         }
     }
@@ -144,17 +270,19 @@ Page {
         function onAnalysisCompleted(analysisName, result) {
             console.log("Analysis completed:", analysisName)
             root.isRunning = false
+            refreshSummaryData()
 
-            if (analysisName === "Disease Frequency" || analysisName === "Infection Rate Comparison") {
-                totalRecordsLabel.text = result.total_records || "—"
-                topCategoryLabel.text = result.diseases?.[0]?.name || result.varieties?.[0]?.name || "—"
+            if (analysisName === "Disease Frequency") {
+                if (diseaseFreqChart) diseaseFreqChart.updateFromMapper()
+            }
+            else if (analysisName === "Infection Rate Comparison") {
+                if (infectionRateChart) infectionRateChart.updateFromMapper()
             }
             else if (analysisName === "Variety Susceptibility") {
-                topCategoryLabel.text = result.varieties?.[0]?.name || "—"
+                if (scatterChart) scatterChart.updateFromMapper()
             }
             else if (analysisName === "Disease By Region") {
-                totalRecordsLabel.text = result.total_records || "—"
-                regionImpactLabel.text = result.regions_detail?.[0]?.name || "—"
+                if (pieChart) pieChart.updateFromMapper()
             }
         }
 
@@ -166,7 +294,8 @@ Page {
 
     Component.onCompleted: {
         analysisSelector.currentIndex = 0
-        // Initial load
         callAnalysis("Disease Frequency")
+        StatisticalAnalyzer.runAllAnalyses()
+        Qt.callLater(refreshSummaryData, 500)
     }
 }

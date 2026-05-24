@@ -22,7 +22,7 @@ Page {
             anchors.margins: 12
 
             Label {
-                text: "Analisis"
+                text: "Analysis"
                 font.pixelSize: 18
                 font.weight: Font.Medium
                 Layout.fillWidth: true
@@ -84,4 +84,5 @@ Page {
         }
 
     }
+
 }

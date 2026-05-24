@@ -109,12 +109,12 @@ Page {
 
                 TextField {
                     id: searchField
-                    placeholderText: "Filter by location..."
+                    placeholderText: "Search by location, disease, or variety..."
                     Layout.preferredWidth: 320
                     enabled: !root.isLoading
-                    onAccepted: {
-                        if (searchField.text.length > 0) {
-                            applyFilter("location", searchField.text)
+                    onTextChanged: {
+                        if (text.length > 0) {
+                            applyGeneralFilter(text)
                         } else {
                             clearFilter()
                         }
@@ -207,40 +207,10 @@ Page {
                             id: recordsView
                             width: parent.width
                             clip: true
+                            model: tempFilteredModel
 
                             // Show placeholder when no data
                             property bool hasData: model && model.count > 0
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                visible: root.isLoading
-                                color: "transparent"
-                                z: 1
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 10
-
-                                    Label {
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        text: "No data available"
-                                        color: "#6b7280"
-                                        font.pixelSize: 14
-                                    }
-
-                                    Button {
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        text: "Fetch Data"
-                                        visible: FieldDataset.count === 0
-                                        onClicked: {
-                                            root.isLoading = true
-                                            root.statusMessage = "Fetching data from server..."
-                                            ResearcherDataService.fetchFieldData()
-                                        }
-                                    }
-                                }
-                            }
 
                             delegate: Rectangle {
                                 width: parent ? parent.width : 0
@@ -283,6 +253,36 @@ Page {
                                         elide: Text.ElideRight
                                         color: "#6b7280"
                                         font.pixelSize: root.textSize
+                                    }
+                                }
+                            }
+
+                            // Empty state
+                            Rectangle {
+                                anchors.fill: parent
+                                visible: tempFilteredModel.count === 0 && !root.isLoading
+                                color: "transparent"
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 10
+
+                                    Label {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: searchField.text ? "No matching records found" : "No data available"
+                                        color: "#6b7280"
+                                        font.pixelSize: 14
+                                    }
+
+                                    Button {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "Fetch Data"
+                                        visible: FieldDataset.count === 0
+                                        onClicked: {
+                                            root.isLoading = true
+                                            root.statusMessage = "Fetching data from server..."
+                                            ResearcherDataService.fetchFieldData()
+                                        }
                                     }
                                 }
                             }
@@ -440,11 +440,25 @@ Page {
         root.statusMessage = "Loading initial data..."
         ResearcherDataService.fetchFieldData()
     }
+
     // Function to refresh the view with proper data mapping
     function refreshView() {
-        recordsView.model = FieldDataset.listModel
-        tempFilteredModel.clear()
-        allRecords = []
+        recordsView.model = tempFilteredModel
+        // Reload all records into filtered model
+        if (allRecords.length > 0) {
+            tempFilteredModel.clear()
+            for (var i = 0; i < allRecords.length; i++) {
+                tempFilteredModel.append(allRecords[i])
+            }
+        } else {
+            // Try to get from dataset
+            var records = FieldDataset.getRecords()
+            tempFilteredModel.clear()
+            for (var i = 0; i < records.length; i++) {
+                var mappedRecord = mapRecord(records[i])
+                tempFilteredModel.append(mappedRecord)
+            }
+        }
     }
 
     // Function to map record to proper field names for display
@@ -458,36 +472,81 @@ Page {
         }
     }
 
-    // Function to apply filter
+    // NEW: General search filter that searches across location, disease, and variety
+    function applyGeneralFilter(searchText) {
+        if (!searchText || searchText === "") {
+            clearFilter()
+            return
+        }
+
+        var searchLower = searchText.toLowerCase()
+        var filtered = []
+        var allData = FieldDataset.getRecords()
+
+        for (var i = 0; i < allData.length; i++) {
+            var record = allData[i]
+            var location = (record.location || "").toLowerCase()
+            var disease = (record.diseasname || record.diseaseName || "").toLowerCase()
+            var variety = (record.variaty || record.variety || "").toLowerCase()
+
+            // Check if search text matches any field
+            if (location.indexOf(searchLower) !== -1 ||
+                disease.indexOf(searchLower) !== -1 ||
+                variety.indexOf(searchLower) !== -1) {
+                filtered.push(mapRecord(record))
+            }
+        }
+
+        root.statusMessage = "Search: '" + searchText + "' - " + filtered.length + " records found"
+        console.log("General filter - Found:", filtered.length, "records")
+
+        tempFilteredModel.clear()
+        for (var j = 0; j < filtered.length; j++) {
+            tempFilteredModel.append(filtered[j])
+        }
+
+        // Clear combo box selections when using general search
+        if (locationFilter) locationFilter.currentIndex = -1
+        if (diseaseFilter) diseaseFilter.currentIndex = -1
+    }
+
+    // Function to apply specific field filter
     function applyFilter(fieldName, filterValue) {
         if (!filterValue || filterValue === "") {
             clearFilter()
         } else {
+            // Clear search field
+            if (searchField) searchField.text = ""
+
             // Use Python-side filtering
             var filtered = FieldDataset.filterByValue(fieldName, filterValue)
             root.statusMessage = "Filtered by " + fieldName + ": " + filterValue + " (" + filtered.length + " records)"
             console.log("Filter applied - Found:", filtered.length, "records")
 
-            // Clear and repopulate the filtered model with mapped records
             tempFilteredModel.clear()
             for (var i = 0; i < filtered.length; i++) {
                 var mappedRecord = mapRecord(filtered[i])
                 tempFilteredModel.append(mappedRecord)
             }
-            recordsView.model = tempFilteredModel
         }
     }
 
-    // Function to clear filter
+    // Function to clear all filters
     function clearFilter() {
         if (locationFilter) locationFilter.currentIndex = -1
         if (diseaseFilter) diseaseFilter.currentIndex = -1
         if (searchField) searchField.text = ""
         root.statusMessage = "Showing all records"
-        refreshView()
+
+        // Reset to all records
+        var allData = FieldDataset.getRecords()
+        tempFilteredModel.clear()
+        for (var i = 0; i < allData.length; i++) {
+            tempFilteredModel.append(mapRecord(allData[i]))
+        }
     }
 
-    // Function to handle export - Fixed to handle direct return value
+    // Function to handle export
     function handleExport(format) {
         if (FieldDataset.count === 0) {
             root.statusMessage = "No data to export"
@@ -497,10 +556,6 @@ Page {
         root.isLoading = true
         root.statusMessage = "Exporting to " + format + "..."
 
-        console.log("Export started for format:", format)
-        console.log("Total records to export:", FieldDataset.count)
-
-        // Use a timer to give UI time to update, then perform export
         var exportTimer = Qt.createQmlObject("import QtQuick 2.0; Timer { interval: 100; repeat: false }", root)
         exportTimer.triggered.connect(function() {
             var result
@@ -510,14 +565,9 @@ Page {
                 result = FieldDataset.exportToJson()
             }
 
-            console.log("Export result:", result)
-
-            // Process result
             if (result && result.toString().indexOf("Error") === -1) {
-                console.log(format + " exported to:", result)
                 root.statusMessage = format + " exported to: " + result.toString().split('/').pop()
             } else {
-                console.error("Export failed:", result)
                 root.statusMessage = "Export failed: " + result
             }
             root.isLoading = false
@@ -530,17 +580,25 @@ Page {
         target: ResearcherDataService
         function onInferencesFetched(records) {
             console.log("Fetched", records.length, "inferences")
-            root.isLoading = false
-            root.statusMessage = "Loaded " + records.length + " records"
 
             // Store all records with proper field mapping
-            allRecords = records
+            allRecords = []
+            for (var i = 0; i < records.length; i++) {
+                allRecords.push(mapRecord(records[i]))
+            }
+
+            root.isLoading = false
+            root.statusMessage = "Loaded " + records.length + " records"
             refreshView()
 
             // Update combo box models after data is loaded
             locationFilter.model = FieldDataExplorer.getUniqueLocations()
             diseaseFilter.model = FieldDataExplorer.getUniqueDiseases()
+            if (StatisticalAnalyzer) {
+                StatisticalAnalyzer.runAllAnalyses()
+            }
         }
+
         function onErrorOccurred(error) {
             console.error("DataService error:", error)
             root.isLoading = false
@@ -552,15 +610,13 @@ Page {
         target: FieldDataExplorer
         function onDataLoaded(count) {
             console.log("Loaded", count, "records into dataset")
-            root.statusMessage = "Loaded " + count + " records"
+            // Refresh the view with new data
+            var records = FieldDataset.getRecords()
+            allRecords = []
+            for (var i = 0; i < records.length; i++) {
+                allRecords.push(mapRecord(records[i]))
+            }
             refreshView()
-        }
-        // Keep these for potential future use but not required for direct export
-        function onExportCompleted(filepath) {
-            console.log("Export completed signal:", filepath)
-        }
-        function onExportFailed(error) {
-            console.error("Export failed signal:", error)
         }
     }
 }

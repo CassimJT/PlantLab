@@ -291,4 +291,8 @@ Item {
                 isTempCritical = false
         }
     }
+
+    BusyIndicator {
+        anchors.centerIn: parent
+    }
 }
