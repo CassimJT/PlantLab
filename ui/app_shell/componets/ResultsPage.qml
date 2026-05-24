@@ -25,8 +25,8 @@ Item {
                 Layout.preferredWidth: Math.min(root.width * 0.38, 380)
                 Layout.fillHeight: true
                 radius: 14
-                color: "#111827"
-                border.color: "#2d3550"
+                color: "#ffffff"
+                border.color: "#dde3ed"
                 border.width: 1
                 clip: true
 
