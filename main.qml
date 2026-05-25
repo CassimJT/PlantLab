@@ -4,6 +4,8 @@ import QtQuick.Controls 2.15
 ApplicationWindow {
     width: screen.width * 0.85
     height: screen.height * 0.85
+    minimumWidth: 1100
+    minimumHeight: 800
     visible: true
     title: qsTr("PlantLab")
     property var aboutWindow: null

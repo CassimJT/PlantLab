@@ -126,7 +126,7 @@ class SplitDataset(Dataset):
 class ModelTrainerTask(QRunnable):
     def __init__(self, dataset_path: str, model_type: str, epochs: int,
                  batch_size: int, learning_rate: float, train_test_split: float,
-                 class_mapping: dict = None):
+                 class_mapping: dict = None, custom_model_path: str = None):
         super().__init__()
         self.dataset_path = dataset_path
         self.model_type = model_type
@@ -135,6 +135,7 @@ class ModelTrainerTask(QRunnable):
         self.learning_rate = learning_rate
         self.train_test_split = train_test_split
         self.class_mapping = class_mapping
+        self.custom_model_path = custom_model_path  # NEW
         self.signals = ModelTrainerSignals()
         self._is_paused = False
         self._is_canceled = False
@@ -362,30 +363,106 @@ class ModelTrainerTask(QRunnable):
 
         return train_loader, val_loader, num_classes
 
+    def _load_custom_model(self, num_classes):
+        """Load a custom base model from file for fine-tuning"""
+        self.signals.status.emit(f"Loading custom base model: {os.path.basename(self.custom_model_path)}")
+
+        try:
+            checkpoint = torch.load(self.custom_model_path, map_location=self.device)
+
+            # Determine model architecture from checkpoint
+            model_type = checkpoint.get('model_type', self.model_type)
+
+            # Create model based on type
+            if "mobilenetv3_small" in model_type or "small" in model_type:
+                model = torchvision.models.mobilenet_v3_small(weights=None)
+                in_features = model.classifier[3].in_features
+                model.classifier[3] = nn.Linear(in_features, num_classes)
+            elif "mobilenetv3_large" in model_type or "large" in model_type:
+                model = torchvision.models.mobilenet_v3_large(weights=None)
+                in_features = model.classifier[3].in_features
+                model.classifier[3] = nn.Linear(in_features, num_classes)
+            else:
+                # Try to infer from checkpoint structure
+                # Check if checkpoint has state dict with classifier pattern
+                state_dict = checkpoint.get('model_state_dict', checkpoint)
+
+                # Attempt to load state dict to a standard model
+                try:
+                    model = torchvision.models.mobilenet_v3_small(weights=None)
+                    model.load_state_dict(state_dict, strict=False)
+                    in_features = model.classifier[3].in_features
+                    model.classifier[3] = nn.Linear(in_features, num_classes)
+                except:
+                    # Fallback to small model
+                    model = torchvision.models.mobilenet_v3_small(weights=None)
+                    in_features = model.classifier[3].in_features
+                    model.classifier[3] = nn.Linear(in_features, num_classes)
+
+            # Load the pretrained weights (excluding classifier)
+            if 'model_state_dict' in checkpoint:
+                # Filter out classifier weights
+                pretrained_dict = {k: v for k, v in checkpoint['model_state_dict'].items()
+                                  if 'classifier' not in k}
+                model_dict = model.state_dict()
+                model_dict.update(pretrained_dict)
+                model.load_state_dict(model_dict, strict=False)
+            else:
+                # Try to load directly
+                pretrained_dict = {k: v for k, v in checkpoint.items()
+                                  if 'classifier' not in k}
+                model_dict = model.state_dict()
+                model_dict.update(pretrained_dict)
+                model.load_state_dict(model_dict, strict=False)
+
+            self.signals.status.emit(f"Custom model loaded successfully! Fine-tuning on {num_classes} classes")
+
+            # Store model info in metadata
+            self.training_metadata['model_info'] = {
+                'model_type': 'custom_finetuned',
+                'base_model_source': self.custom_model_path,
+                'original_model_type': checkpoint.get('model_type', 'unknown'),
+                'num_classes': num_classes,
+                'pretrained': True,
+                'input_size': (3, 224, 224)
+            }
+
+            return model
+
+        except Exception as e:
+            self.signals.status.emit(f"Error loading custom model: {str(e)}")
+            self.signals.status.emit("Falling back to default pretrained model")
+            return None
+
     def _create_model(self, num_classes):
-        """Create MobileNetV3 model with transfer learning"""
+        """Create MobileNetV3 model with transfer learning (or load custom model)"""
+
+        # Try to load custom model first if specified
+        if self.custom_model_path and os.path.exists(self.custom_model_path):
+            custom_model = self._load_custom_model(num_classes)
+            if custom_model is not None:
+                return custom_model
+
+        # Fall back to default pretrained models
         self.signals.status.emit(f"Creating {self.model_type} model...")
 
         # Load pretrained model based on type
         if "mobilenetv3_small" in self.model_type:
             weights = torchvision.models.MobileNet_V3_Small_Weights.IMAGENET1K_V1
             model = torchvision.models.mobilenet_v3_small(weights=weights)
-            # Modify classifier for number of classes
             in_features = model.classifier[3].in_features
             model.classifier[3] = nn.Linear(in_features, num_classes)
 
         elif "mobilenetv3_large" in self.model_type:
             weights = torchvision.models.MobileNet_V3_Large_Weights.IMAGENET1K_V1
             model = torchvision.models.mobilenet_v3_large(weights=weights)
-            # Modify classifier for number of classes
             in_features = model.classifier[3].in_features
             model.classifier[3] = nn.Linear(in_features, num_classes)
 
-        elif "ssdlite_mobilenetv3" in self.model_type:
-            # For detection, you'd need a different architecture
-            self.signals.status.emit("SSD Lite not fully implemented yet")
-            weights = torchvision.models.MobileNet_V3_Large_Weights.IMAGENET1K_V1
-            model = torchvision.models.mobilenet_v3_large(weights=weights)
+        elif "custom" in self.model_type:
+            # If custom but no file, use small as fallback
+            weights = torchvision.models.MobileNet_V3_Small_Weights.IMAGENET1K_V1
+            model = torchvision.models.mobilenet_v3_small(weights=weights)
             in_features = model.classifier[3].in_features
             model.classifier[3] = nn.Linear(in_features, num_classes)
         else:
@@ -555,7 +632,8 @@ class ModelTrainerTask(QRunnable):
                 'train_test_split': self.train_test_split,
                 'device': str(self.device),
                 'early_stopping_patience': self.early_stopping_patience,
-                'actual_epochs_completed': len(train_acc_history)
+                'actual_epochs_completed': len(train_acc_history),
+                'custom_base_model': self.custom_model_path  # NEW
             },
             'performance_metrics': {
                 'final_train_accuracy': final_train_acc,
@@ -621,7 +699,7 @@ class ModelTrainerTask(QRunnable):
                 self.signals.canceled.emit(True)
                 return
 
-            # Create model
+            # Create model (handles custom model loading)
             self.signals.conversion_step.emit("Creating model...")
             model = self._create_model(num_classes)
 
@@ -689,14 +767,15 @@ class ModelTrainerTask(QRunnable):
                         'class_names': self.class_names,
                         'num_classes': num_classes,
                         'model_type': self.model_type,
-                        'input_size': (3, 224, 224),  # Standard input size
-                        'training_history': {k: v[-5:] for k, v in self.training_history.items()},  # Last 5 epochs
+                        'input_size': (3, 224, 224),
+                        'training_history': {k: v[-5:] for k, v in self.training_history.items()},
                         'hyperparameters': {
                             'epochs': self.epochs,
                             'batch_size': self.batch_size,
                             'learning_rate': self.learning_rate,
                             'train_test_split': self.train_test_split,
-                            'device': str(self.device)
+                            'device': str(self.device),
+                            'custom_base_model': self.custom_model_path  # NEW
                         }
                     }, best_model_path)
                     self.signals.status.emit(f"New best model saved! Accuracy: {best_accuracy:.2%}")
@@ -741,7 +820,8 @@ class ModelTrainerTask(QRunnable):
                     'batch_size': self.batch_size,
                     'learning_rate': self.learning_rate,
                     'train_test_split': self.train_test_split,
-                    'device': str(self.device)
+                    'device': str(self.device),
+                    'custom_base_model': self.custom_model_path  # NEW
                 },
                 'timestamp': timestamp,
                 'class_mapping': self.class_mapping,
