@@ -22,7 +22,7 @@ Page {
             width: parent.width
             spacing: 0
 
-            Item { Layout.preferredHeight: 85 }
+            Item { Layout.preferredHeight: 120 }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -37,7 +37,7 @@ Page {
 
             Item { Layout.preferredHeight: 60 }
 
-            // ── Card ─────────────────────────────────────────────────────────
+            //  Card
             Rectangle {
                 Layout.leftMargin: 20
                 Layout.rightMargin: 20
@@ -61,22 +61,22 @@ Page {
                         height: 56
                         radius: 12
                         color: "#FAFAFA"
-                        border.color: nameField.activeFocus ? "#8FAF8F" : "#000000"
-                        border.width: nameField.activeFocus ? 1.5 : 1
+                        border.color: firstNameField.activeFocus ? "#8FAF8F" : "#000000"
+                        border.width: firstNameField.activeFocus ? 1.5 : 1
 
                         Behavior on border.color { ColorAnimation { duration: 150 } }
 
                         Text {
-                            text: "Full Name"
+                            text: "First Name"
                             color: "#000000"
                             font.pixelSize: 14
                             anchors.verticalCenter: parent.verticalCenter
                             x: 16
-                            visible: nameField.text.length === 0 && !nameField.activeFocus
+                            visible: firstNameField.text.length === 0 && !firstNameField.activeFocus
                         }
 
                         TextField {
-                            id: nameField
+                            id: firstNameField
                             anchors {
                                 fill: parent
                                 leftMargin: 16; rightMargin: 14
@@ -94,22 +94,22 @@ Page {
                         height: 56
                         radius: 12
                         color: "#FAFAFA"
-                        border.color: phoneNumberField.activeFocus ? "#8FAF8F" : "#000000"
-                        border.width: phoneNumberField.activeFocus ? 1.5 : 1
+                        border.color: surnameField.activeFocus ? "#8FAF8F" : "#000000"
+                        border.width: surnameField.activeFocus ? 1.5 : 1
 
                         Behavior on border.color { ColorAnimation { duration: 150 } }
 
                         Text {
-                            text: "Phone Number"
+                            text: "Surname"
                             color: "#000000"
                             font.pixelSize: 14
                             anchors.verticalCenter: parent.verticalCenter
                             x: 16
-                            visible: phoneNumberField.text.length === 0 && !phoneNumberField.activeFocus
+                            visible: surnameField.text.length === 0 && !surnameField.activeFocus
                         }
 
                         TextField {
-                            id: phoneNumberField
+                            id: surnameField
                             anchors {
                                 fill: parent
                                 leftMargin: 16; rightMargin: 14
@@ -127,22 +127,22 @@ Page {
                         height: 56
                         radius: 12
                         color: "#FAFAFA"
-                        border.color: districtField.activeFocus ? "#8FAF8F" : "#000000"
-                        border.width: districtField.activeFocus ? 1.5 : 1
+                        border.color: emailField.activeFocus ? "#8FAF8F" : "#000000"
+                        border.width: emailField.activeFocus ? 1.5 : 1
 
                         Behavior on border.color { ColorAnimation { duration: 150 } }
 
                         Text {
-                            text: "District"
+                            text: "Email"
                             color: "#000000"
                             font.pixelSize: 14
                             anchors.verticalCenter: parent.verticalCenter
                             x: 16
-                            visible: districtField.text.length === 0 && !districtField.activeFocus
+                            visible: emailField.text.length === 0 && !emailField.activeFocus
                         }
 
                         TextField {
-                            id: districtField
+                            id: emailField
                             anchors {
                                 fill: parent
                                 leftMargin: 16; rightMargin: 14
@@ -151,6 +151,40 @@ Page {
                             color: "#000000"
                             font.pixelSize: 14
                             background: Item {}
+                            verticalAlignment: TextInput.AlignVCenter
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 56
+                        radius: 12
+                        color: "#FAFAFA"
+                        border.color: passwordField.activeFocus ? "#8FAF8F" : "#000000"
+                        border.width: passwordField.activeFocus ? 1.5 : 1
+
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                        Text {
+                            text: "Password"
+                            color: "#000000"
+                            font.pixelSize: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            x: 16
+                            visible: passwordField.text.length === 0 && !passwordField.activeFocus
+                        }
+
+                        TextField {
+                            id: passwordField
+                            anchors {
+                                fill: parent
+                                leftMargin: 16; rightMargin: 14
+                            }
+                            placeholderText: ""
+                            color: "#000000"
+                            font.pixelSize: 14
+                            background: Item {}
+                            echoMode: TextInput.Password
                             verticalAlignment: TextInput.AlignVCenter
                         }
                     }
@@ -203,6 +237,7 @@ Page {
                             color: "#000000"
                             anchors.verticalCenter: parent.verticalCenter
                         }
+
                         Text {
                             text: "Sign in"
                             font.pixelSize: 13
@@ -214,7 +249,6 @@ Page {
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
-                                    // Fixed: removed nested MouseArea
                                     if (signUpPage.authLoader) {
                                         signUpPage.authLoader.source = "../componets/SignIn.qml"
                                     } else {
