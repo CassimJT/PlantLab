@@ -25,12 +25,12 @@ Window {
     /* ======================
        COLORS (CLEAN SYSTEM)
        ====================== */
-    readonly property color bgColor:     "#0f1623"
-    readonly property color cardColor:   "#1a2035"
+    readonly property color bgColor:     "#eef2f7"
+    readonly property color cardColor:   "#ffffff"
     readonly property color primary:     "#4f6ef7"
-    readonly property color textMain:    "#e2e8f0"
+    readonly property color textMain:    "#0f172a"
     readonly property color textMuted:   "#64748b"
-    readonly property color borderColor: "#2d3550"
+    readonly property color borderColor: "#dde3ed"
 
     /* ======================
        BACKGROUND
