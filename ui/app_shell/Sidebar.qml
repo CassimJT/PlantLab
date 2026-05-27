@@ -76,7 +76,6 @@ Page {
         }
     }
 
-
     ItemDelegate {
         id: user_id
         width: parent.width
@@ -110,29 +109,55 @@ Page {
             }
             Text {
                 id: user_email
-                text: qsTr("SingIn")
+                text: qsTr("Sign In")
                 color: "#333"
                 anchors {
                     verticalCenter: parent.verticalCenter
                 }
             }
-
         }
         anchors {
             bottom: parent.bottom
         }
         onClicked: {
             if (!authScreenWindow) {
-                authScreenWindow = Qt.createComponent("../auth/screen/AuthScreen.qml").createObject()
-                authScreenWindow.closing.connect(function() {
-                    authScreenWindow = null
-                })
+                var component = Qt.createComponent("../auth/screen/AuthScreen.qml")
+
+                if (component.status === Component.Ready) {
+                    authScreenWindow = component.createObject()
+
+                    // Only connect signals after the window is created
+                    if (authScreenWindow) {
+                        authScreenWindow.closing.connect(function() {
+                            authScreenWindow = null
+                        })
+                        authScreenWindow.show()
+                    } else {
+                        console.error("Failed to create auth window")
+                    }
+                } else {
+                    // Handle component not ready
+                    console.log("Component not ready, waiting...")
+                    component.statusChanged.connect(function() {
+                        if (component.status === Component.Ready) {
+                            authScreenWindow = component.createObject()
+                            if (authScreenWindow) {
+                                authScreenWindow.closing.connect(function() {
+                                    authScreenWindow = null
+                                })
+                                authScreenWindow.show()
+                            }
+                            component.statusChanged.disconnect(this)
+                        } else if (component.status === Component.Error) {
+                            console.error("Component error:", component.errorString())
+                        }
+                    })
+                }
             } else {
                 authScreenWindow.show()
                 authScreenWindow.raise()
             }
         }
-
     }
     
 }

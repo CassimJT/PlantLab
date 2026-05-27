@@ -3,10 +3,14 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 Page {
+    id: signUpPage
     objectName: "SignUp"
     width: 360
     height: 800
     background: Rectangle { color: "#edf2e0" }
+    signal onBack()
+    signal onSignUp()
+    property var authLoader: null
 
     Flickable {
         anchors.fill: parent
@@ -32,6 +36,7 @@ Page {
             }
 
             Item { Layout.preferredHeight: 60 }
+
             // ── Card ─────────────────────────────────────────────────────────
             Rectangle {
                 Layout.leftMargin: 20
@@ -50,6 +55,7 @@ Page {
                         topMargin: 28; leftMargin: 20; rightMargin: 20
                     }
                     spacing: 16
+
                     Rectangle {
                         Layout.fillWidth: true
                         height: 56
@@ -82,6 +88,7 @@ Page {
                             verticalAlignment: TextInput.AlignVCenter
                         }
                     }
+
                     Rectangle {
                         Layout.fillWidth: true
                         height: 56
@@ -160,7 +167,6 @@ Page {
                             GradientStop { position: 1.0; color: signUpMA.pressed ? "#3dbf60" : "#5dde7a" }
                         }
 
-
                         Rectangle {
                             anchors { top: parent.top; left: parent.left; right: parent.right }
                             height: parent.height / 2
@@ -181,12 +187,12 @@ Page {
                             id: signUpMA
                             anchors.fill: parent
                             onClicked: {
-                                // navigate to homepage
-                                // stackView.push("../home/HomePage.qml")
+                                signUpPage.onSignUp()
                                 console.log("Sign up tapped")
                             }
                         }
                     }
+
                     Row {
                         Layout.alignment: Qt.AlignHCenter
                         spacing: 4
@@ -208,7 +214,15 @@ Page {
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
-                                    mainStackView?.pop()
+                                    // Fixed: removed nested MouseArea
+                                    if (signUpPage.authLoader) {
+                                        signUpPage.authLoader.source = "../componets/SignIn.qml"
+                                    } else {
+                                        var window = signUpPage.Window.window
+                                        if (window && window.authLoader) {
+                                            window.authLoader.source = "../componets/SignIn.qml"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -222,10 +236,3 @@ Page {
         }
     }
 }
-
-
-
-
-
-
-

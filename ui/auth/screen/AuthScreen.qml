@@ -2,9 +2,9 @@ import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../pages"
 
 Window {
+    id: authWindow
     width: 600
     height: 600
     visible: true
@@ -12,16 +12,18 @@ Window {
 
     modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowSystemMenuHint
+    color: "#edf2e0"
 
-    StackLayout {
-        id: authStackLayout
-        currentIndex: 1
-        SignInPage{
+    Loader {
+        id: authLoader
+        anchors.centerIn: parent
+        source: "../componets/SignIn.qml"  // Path from screen to componets
 
-        }
-        SignUpPage {
-
+        onLoaded: {
+            if (item) {
+                // Pass reference to the component
+                item.authLoader = authLoader
+            }
         }
     }
-
 }

@@ -1,15 +1,20 @@
 from PySide6 import QtCore
-
+from PySide6.QtCore import (
+    QObject,
+    Slot,
+    Signal,
+    Property
+)
 
 class AppSettings(QtCore.QObject):
 
     _instance = None
 
-    loginChanged = QtCore.Signal()
-    tokenChanged = QtCore.Signal()
-    userChanged = QtCore.Signal()
-    rememberMeChanged = QtCore.Signal()
-    languageChanged = QtCore.Signal()
+    loginChanged = Signal()
+    tokenChanged = Signal()
+    userChanged = Signal()
+    rememberMeChanged = Signal()
+    languageChanged = Signal()
 
     def __init__(self, parent=None):
 
@@ -36,7 +41,7 @@ class AppSettings(QtCore.QObject):
 
     # ---------------- LOGIN ----------------
 
-    @QtCore.Property(bool, notify=loginChanged)
+    @Property(bool, notify=loginChanged)
     def isLoggedIn(self):
 
         return self._settings.value(
@@ -45,7 +50,7 @@ class AppSettings(QtCore.QObject):
             type=bool
         )
 
-    @QtCore.Slot(bool)
+    @Slot(bool)
     def setLoggedIn(self, loggedIn):
 
         if self.isLoggedIn == loggedIn:
@@ -60,7 +65,7 @@ class AppSettings(QtCore.QObject):
 
     # ---------------- REMEMBER ME (always true for desktop) ----------------
 
-    @QtCore.Property(bool, notify=rememberMeChanged)
+    @Property(bool, notify=rememberMeChanged)
     def rememberMe(self):
         # Default to True for desktop app
         return self._settings.value(
@@ -69,7 +74,7 @@ class AppSettings(QtCore.QObject):
             type=bool
         )
 
-    @QtCore.Slot(bool)
+    @Slot(bool)
     def setRememberMe(self, remember):
 
         if self.rememberMe == remember:
@@ -84,7 +89,7 @@ class AppSettings(QtCore.QObject):
 
     # ---------------- TOKEN ----------------
 
-    @QtCore.Property(str, notify=tokenChanged)
+    @Property(str, notify=tokenChanged)
     def token(self):
 
         return self._settings.value(
@@ -93,7 +98,7 @@ class AppSettings(QtCore.QObject):
             type=str
         )
 
-    @QtCore.Slot(str)
+    @Slot(str)
     def setToken(self, token):
 
         if self.token == token:
@@ -112,7 +117,7 @@ class AppSettings(QtCore.QObject):
 
     # ---------------- USER ----------------
 
-    @QtCore.Property(str, notify=userChanged)
+    @Property(str, notify=userChanged)
     def userEmail(self):
 
         return self._settings.value(
@@ -121,7 +126,7 @@ class AppSettings(QtCore.QObject):
             type=str
         )
 
-    @QtCore.Property(str, notify=userChanged)
+    @Property(str, notify=userChanged)
     def userDisplayName(self):
 
         return self._settings.value(
@@ -130,7 +135,7 @@ class AppSettings(QtCore.QObject):
             type=str
         )
 
-    @QtCore.Slot(str, str)
+    @Slot(str, str)
     def setUser(self, email: str, displayName: str):
 
         self._settings.setValue("auth/userEmail", email)
@@ -144,7 +149,7 @@ class AppSettings(QtCore.QObject):
 
     # ---------------- LANGUAGE ----------------
 
-    @QtCore.Property(str, notify=languageChanged)
+    @Property(str, notify=languageChanged)
     def language(self):
 
         return self._settings.value(
@@ -153,7 +158,7 @@ class AppSettings(QtCore.QObject):
             type=str
         )
 
-    @QtCore.Slot(str)
+    @Slot(str)
     def setLanguage(self, language):
 
         if self.language == language:

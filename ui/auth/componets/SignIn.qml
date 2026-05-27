@@ -1,13 +1,16 @@
+//signin Component
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 Page {
-    id:signInPage
+    id:signIn
     width: 360
     height: 800
     background: Rectangle { color: "#edf2e0" }
-
+    signal onContinue()
+    signal onCreateAccount()
+    property var authLoader: null
     Flickable {
         anchors.fill: parent
         contentHeight: mainColumn.implicitHeight + 60
@@ -248,7 +251,7 @@ Page {
                             id: continueMA
                             anchors.fill: parent
                             onClicked: {
-                                mainStackView?.push("home/screens/HomeScreen.qml")
+                                signIn.onContinue()
                             }
                         }
                     }
@@ -275,7 +278,16 @@ Page {
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
-                                    mainStackView.push("ui/auth/pages/SignUpPage.qml")
+                                    if (signIn.authLoader) {
+                                        // Path from screen to componets (going up from screen to auth, then to componets)
+                                        signIn.authLoader.source = "../componets/SignUp.qml"
+                                    } else {
+                                        // Alternative: find the window
+                                        var window = signIn.Window.window
+                                        if (window && window.authLoader) {
+                                            window.authLoader.source = "../componets/SignUp.qml"
+                                        }
+                                    }
                                 }
                             }
                         }

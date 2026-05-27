@@ -82,8 +82,6 @@ files = [
 "ui/app_shell/windows/Settings.qml",
 "ui/auth/componets/SignIn.qml",
 "ui/auth/componets/SignUp.qml",
-"ui/auth/pages/SignInPage.qml",
-"ui/auth/pages/SignUpPage.qml",
 "ui/auth/screen/AuthScreen.qml",
 "ui/curation/labeling_page.qml",
 "ui/dashboard/DashboardPage.qml",
