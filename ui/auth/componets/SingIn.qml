@@ -26,8 +26,8 @@ Page {
                 source: "qrc:/assets/app_icon/PlantDocutor.png"
                 fillMode: Image.PreserveAspectFit
 
-                Layout.preferredWidth: 40
-                Layout.preferredHeight: 40
+                Layout.preferredWidth: 70
+                Layout.preferredHeight: 70
                 Layout.alignment: Qt.AlignHCenter
             }
 
@@ -42,7 +42,7 @@ Page {
                 font.letterSpacing: 0.3
             }
 
-            Item { Layout.preferredHeight: 70 }
+            Item { Layout.preferredHeight: 90 }
 
             //  Card
             Rectangle {
