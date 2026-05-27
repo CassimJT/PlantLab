@@ -12,30 +12,37 @@ Page {
     signal onSignUp()
     property var authLoader: null
 
-    Flickable {
+    ColumnLayout {
+        id: mainColumn
         anchors.fill: parent
-        contentHeight: mainColumn.implicitHeight + 60
-        clip: true
-
-        ColumnLayout {
-            id: mainColumn
             width: parent.width
             spacing: 0
 
-            Item { Layout.preferredHeight: 120 }
+              Item { Layout.preferredHeight: 100 }
+
+            // App Logo
+            Image {
+                id: appLogo
+                source: "qrc:/assets/app_icon/PlantDocutor.png"
+                fillMode: Image.PreserveAspectFit
+                Layout.preferredWidth: 100
+                Layout.preferredHeight: 100
+                Layout.alignment: Qt.AlignHCenter
+            }
+          Item { Layout.preferredHeight: 20 }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: 72
                 text: "Sign Up To PlantDoctor"
                 font.family: "Georgia"
-                font.pixelSize: 26
+                font.pixelSize: 30
                 color: "#1A2E1F"
                 font.bold: true
                 font.letterSpacing: 0.3
             }
 
-            Item { Layout.preferredHeight: 60 }
+            Item { Layout.preferredHeight: 40 }
 
             //  Card
             Rectangle {
@@ -269,4 +276,4 @@ Page {
             Item { Layout.preferredHeight: 40 }
         }
     }
-}
+
