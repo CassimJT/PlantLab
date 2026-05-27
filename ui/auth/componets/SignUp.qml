@@ -42,7 +42,7 @@ Page {
                 font.letterSpacing: 0.3
             }
 
-            Item { Layout.preferredHeight: 40 }
+            Item { Layout.preferredHeight: 30 }
 
             //  Card
             Rectangle {
