@@ -25,17 +25,18 @@ Page {
             id: appLogo
             source: "qrc:/assets/app_icon/PlantDocutor.png"
             fillMode: Image.PreserveAspectFit
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
+            Layout.preferredWidth: 100
+            Layout.preferredHeight: 100
             Layout.alignment: Qt.AlignHCenter
         }
 
+        Item { Layout.preferredHeight: 20 }
         //  Heading
         Text {
             Layout.alignment: Qt.AlignHCenter
             text: "Sign in to PlantDoctor"
             font.family: "Georgia"
-            font.pixelSize: 26
+            font.pixelSize: 30
             font.bold: true
             color: "#1A2E1F"
             font.letterSpacing: 0.3
