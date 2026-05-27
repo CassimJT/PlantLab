@@ -18,7 +18,7 @@ Page {
             width: parent.width
             spacing: 0
 
-              Item { Layout.preferredHeight: 100 }
+              Item { Layout.preferredHeight:40 }
 
             // App Logo
             Image {
@@ -42,7 +42,7 @@ Page {
                 font.letterSpacing: 0.3
             }
 
-            Item { Layout.preferredHeight: 30 }
+            Item { Layout.preferredHeight: 25 }
 
             //  Card
             Rectangle {
