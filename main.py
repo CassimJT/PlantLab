@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 import rc_resource
@@ -48,6 +49,7 @@ import os
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(":/assets/app_icon/Icon_l.png"))
     engine = QQmlApplicationEngine()
 
     # ======================================
