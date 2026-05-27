@@ -15,11 +15,11 @@ Window {
 
     StackLayout {
         id: authStackLayout
-        currentIndex: 0
+        currentIndex: 1
         SignInPage{
 
         }
-        SingUpPage {
+        SignUpPage {
 
         }
     }
