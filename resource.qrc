@@ -36,5 +36,8 @@
         <file>assets/dashboard/ihumidity.png</file>
         <file>assets/languages/pests_ny.json</file>
         <file>assets/languages/pests_en.json</file>
+        <file>assets/app_icon/Icon.svg</file>
+        <file>assets/app_icon/Icon.png</file>
+        <file>assets/app_icon/Icon_l.png</file>
     </qresource>
 </RCC>

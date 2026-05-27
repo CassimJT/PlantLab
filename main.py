@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 import rc_resource
@@ -38,12 +39,17 @@ from src.core.research.DataService import DataService
 from src.core.research.StatisticalAnalyzer import StatisticalAnalyzer, PlotDataModel
 from src.core.research.FieldDataExplorer import FieldDataExplorer
 from src.core.research.FieldDataset import FieldDataset
+
+# Appsettings
+from src.core.Utils.AppSettings import AppSettings
+
 import PySide6
 import os
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(":/assets/app_icon/Icon_l.png"))
     engine = QQmlApplicationEngine()
 
     # ======================================
@@ -110,6 +116,9 @@ if __name__ == "__main__":
     data_service.inferencesFetched.connect(field_dataset.loadRecords)
     data_service.inferencesFetched.connect(field_data_explorer.loadFieldData)
 
+    # Appsetting (Singleton)
+    settings = AppSettings.instance()
+
     # Error handling
     data_service.errorOccurred.connect(lambda msg: print(f"Data Service Error: {msg}"))
     statistical_analyzer.analysisError.connect(lambda name, msg: print(f"Analysis Error ({name}): {msg}"))
@@ -156,6 +165,8 @@ if __name__ == "__main__":
     # RTSP system
     qmlRegisterType(RTSVideoOutput, "RTSVideoOutput", 1, 0, "RTSVideoOutput")
 
+    # AppSettings
+    engine.rootContext().setContextProperty("AppSettings", settings)
     # ======================================
     # Load QML
     # ======================================

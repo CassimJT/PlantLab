@@ -66,42 +66,34 @@ Page {
                 }
 
                 Button {
-                    text: "Maize/Corn"
+                    text: "Tomato"
                     enabled: !root.isLoading
                     onClicked: {
-                        applyFilter("variaty", "Corn_777")
+                        applyFilter("crop", "Tomato")
                     }
                 }
 
                 Button {
-                    text: "High breed Maize"
+                    text: "Maize"
                     enabled: !root.isLoading
                     onClicked: {
-                        applyFilter("variaty", "Hybrid maize")
+                        applyFilter("crop", "Maize")
                     }
                 }
 
                 Button {
-                    text: "Local Tommato"
+                    text: "Potato"
                     enabled: !root.isLoading
                     onClicked: {
-                        applyFilter("variaty", "Local tomato")
+                        applyFilter("crop", "Potato")
                     }
                 }
 
                 Button {
-                    text: "Beens"
+                    text: "Soybean"
                     enabled: !root.isLoading
                     onClicked: {
-                        applyFilter("variaty", "Boma beans")
-                    }
-                }
-
-                Button {
-                    text: "Cassava"
-                    enabled: !root.isLoading
-                    onClicked: {
-                        applyFilter("variaty", "Chalimbana")
+                        applyFilter("crop", "Soybean")
                     }
                 }
 
@@ -160,8 +152,15 @@ Page {
                             spacing: 8
 
                             Label {
-                                Layout.preferredWidth: 120
+                                Layout.preferredWidth: 100
                                 text: "Location"
+                                font.bold: true
+                                font.pixelSize: 13
+                                color: "#334155"
+                            }
+                            Label {
+                                Layout.preferredWidth: 80
+                                text: "Crop"
                                 font.bold: true
                                 font.pixelSize: 13
                                 color: "#334155"
@@ -209,9 +208,6 @@ Page {
                             clip: true
                             model: tempFilteredModel
 
-                            // Show placeholder when no data
-                            property bool hasData: model && model.count > 0
-
                             delegate: Rectangle {
                                 width: parent ? parent.width : 0
                                 height: 40
@@ -223,8 +219,14 @@ Page {
                                     spacing: 8
 
                                     Text {
-                                        Layout.preferredWidth: 120
+                                        Layout.preferredWidth: 100
                                         text: model.location || ""
+                                        elide: Text.ElideRight
+                                        font.pixelSize: root.textSize
+                                    }
+                                    Text {
+                                        Layout.preferredWidth: 80
+                                        text: model.crop || ""
                                         elide: Text.ElideRight
                                         font.pixelSize: root.textSize
                                     }
@@ -277,7 +279,7 @@ Page {
                                     Button {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: "Fetch Data"
-                                        visible: FieldDataset.count === 0
+                                        visible: getRecordCount() === 0
                                         onClicked: {
                                             root.isLoading = true
                                             root.statusMessage = "Fetching data from server..."
@@ -384,13 +386,13 @@ Page {
                     }
 
                     ComboBox {
-                        id: diseaseFilter
+                        id: cropFilter
                         width: parent.width * 0.9
-                        model: FieldDataExplorer.getUniqueDiseases()
-                        displayText: currentText || "Filter by disease"
+                        model: FieldDataExplorer.getUniqueCrops()
+                        displayText: currentText || "Filter by crop"
                         onActivated: {
                             if (currentText) {
-                                applyFilter("diseasname", currentText)
+                                applyFilter("crop", currentText)
                             }
                         }
                     }
@@ -465,6 +467,7 @@ Page {
     function mapRecord(record) {
         return {
             "location": record.location || "",
+            "crop": record.crop || "",
             "diseaseName": record.diseasname || record.diseaseName || "",
             "confidence": record.confidence || 0,
             "variety": record.variaty || record.variety || "",
@@ -507,7 +510,7 @@ Page {
 
         // Clear combo box selections when using general search
         if (locationFilter) locationFilter.currentIndex = -1
-        if (diseaseFilter) diseaseFilter.currentIndex = -1
+        if (cropFilter) cropFilter.currentIndex = -1
     }
 
     // Function to apply specific field filter
@@ -534,7 +537,7 @@ Page {
     // Function to clear all filters
     function clearFilter() {
         if (locationFilter) locationFilter.currentIndex = -1
-        if (diseaseFilter) diseaseFilter.currentIndex = -1
+        if (cropFilter) cropFilter.currentIndex = -1
         if (searchField) searchField.text = ""
         root.statusMessage = "Showing all records"
 
@@ -593,7 +596,7 @@ Page {
 
             // Update combo box models after data is loaded
             locationFilter.model = FieldDataExplorer.getUniqueLocations()
-            diseaseFilter.model = FieldDataExplorer.getUniqueDiseases()
+            cropFilter.model = FieldDataExplorer.getUniqueCrops()
             if (StatisticalAnalyzer) {
                 StatisticalAnalyzer.runAllAnalyses()
             }

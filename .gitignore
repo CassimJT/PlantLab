@@ -66,3 +66,7 @@ compile_commands.json
 *.qmltypes
 *_qmltyperegistrations.cpp
 *metatypes.json
+build/
+dist/
+__pycache__/
+*.pyc

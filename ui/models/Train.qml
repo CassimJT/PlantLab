@@ -74,16 +74,70 @@ Page {
                     columns: 2
                     columnSpacing: 12
                     rowSpacing: 10
-                    Layout.fillWidth: true
+                    width: parent.width
 
                     Label { text: "Model Type:" }
                     ComboBox {
                         id: modelType
-                        Layout.preferredWidth: parent.width * 0.7
+                        Layout.preferredWidth: parent.width * 0.5
                         model: ["MobileNetV3-Small (fastest)",
                             "MobileNetV3-Large (more accurate)",
-                            "SSDLite-MobileNetV3 (for detection)"]
+                            "SSDLite-MobileNetV3 (for detection)",
+                            "MobileNet(Custom)"]
                         currentIndex: 0
+
+                        onCurrentTextChanged: {
+                            // Show/hide custom model section
+                            customModelSection.visible = (currentText === "MobileNet(Custom)")
+                        }
+                    }
+
+                    // NEW: Custom model section (visible only when "Custom" is selected)
+
+                    ColumnLayout {
+                        id: customModelSection
+                        visible: false
+                        Layout.columnSpan: 2
+                        Layout.fillWidth: width
+                        spacing: 10
+                        CheckBox {
+                            id: useCustomModelCheckbox
+                            text: "Use custom base model"
+                            checked: ModelTrainer ? ModelTrainer.useCustomModel : false
+
+                            onCheckedChanged: {
+                                if (ModelTrainer) {
+                                    ModelTrainer.setUseCustomModel(checked)
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.preferredWidth: parent.width * 0.6
+                            spacing: 5
+                            TextField {
+                                id: customModelPathField
+                                Layout.fillWidth: true
+                                placeholderText: "Select a .pth or .pt model file"
+                                readOnly: true
+                                text: ModelTrainer ? ModelTrainer.customModelPath : ""
+                                enabled: useCustomModelCheckbox.checked
+
+                                Connections {
+                                    target: ModelTrainer
+                                    function onCustomModelPathChanged() {
+                                        customModelPathField.text = ModelTrainer.customModelPath
+                                    }
+                                }
+                            }
+                            Button {
+                                text: "Browse"
+                                enabled: useCustomModelCheckbox.checked
+                                onClicked: customModelDialog.open()
+                            }
+                        }
+
+
                     }
 
                     Label { text: "Epochs:" }
@@ -237,6 +291,17 @@ Page {
                         font.italic: true
                         color: "#555"
                     }
+
+                    // NEW: Show custom model info if using custom
+                    Label {
+                        text: "Using custom base model: " + (ModelTrainer && ModelTrainer.useCustomModel && ModelTrainer.customModelPath ?
+                                                                 ModelTrainer.customModelPath.split("/").pop() : "")
+                        visible: ModelTrainer && ModelTrainer.useCustomModel && ModelTrainer.customModelPath !== ""
+                        font.italic: true
+                        color: "#0066cc"
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
                 }
             }
 
@@ -300,9 +365,14 @@ Page {
                             split.value = 0.8
                             statusMessage = "Ready to train model"
                             progressValue = 0
+                            customModelPathField.text = ""
+                            useCustomModelCheckbox.checked = false
 
                             if (training && ModelTrainer) {
                                 ModelTrainer.stopTraining()
+                            }
+                            if (ModelTrainer) {
+                                ModelTrainer.setUseCustomModel(false)
                             }
                         }
                     }
@@ -381,6 +451,7 @@ Page {
         }
     }
 
+    // File dialog for dataset CSV
     FileDialog {
         id: fileDialog
         title: "Select Training CSV"
@@ -397,6 +468,26 @@ Page {
         }
     }
 
+    // NEW: File dialog for custom model
+    FileDialog {
+        id: customModelDialog
+        title: "Select Custom Base Model"
+        nameFilters: ["PyTorch models (*.pth *.pt)", "All files (*)"]
+
+        onAccepted: {
+            var filePath = customModelDialog.selectedFile.toString()
+            if (filePath.startsWith("file://")) {
+                filePath = filePath.substring(7)
+            }
+            if (ModelTrainer) {
+                ModelTrainer.setCustomModelPath(filePath)
+                ModelTrainer.setUseCustomModel(true)
+                useCustomModelCheckbox.checked = true
+            }
+        }
+    }
+
+    // Export dialogs
     FileDialog {
         id: exportDialog
         title: "Export Trained Model"
@@ -523,6 +614,9 @@ Page {
             root.statusMessage = ModelTrainer.statusMessage || "Ready to train model"
             root.currentLoss = ModelTrainer.currentLoss || 0
             root.currentAccuracy = ModelTrainer.currentAccuracy || 0
+            customModelPathField.text = ModelTrainer.customModelPath || ""
+            useCustomModelCheckbox.checked = ModelTrainer.useCustomModel || false
+            customModelSection.visible = (modelType.currentText === "Custom (Load your own base model)")
         }
     }
 }

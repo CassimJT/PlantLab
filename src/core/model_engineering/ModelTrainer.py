@@ -34,6 +34,8 @@ class ModelTrainer(QtCore.QObject):
     statusMessageChanged = Signal(str)
     outputLocationChanged = Signal(str)
     trainedModelPathChanged = Signal(str)
+    customModelPathChanged = Signal(str)  # NEW: Signal for custom model path
+    useCustomModelChanged = Signal(bool)   # NEW: Signal for custom model toggle
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -54,6 +56,10 @@ class ModelTrainer(QtCore.QObject):
         self._thread_pool = QThreadPool.globalInstance()
         self._current_task = None
         self._current_model_type = ""
+
+        # NEW: Custom model properties
+        self._custom_model_path = ""
+        self._use_custom_model = False
 
         # Set default output location
         home = str(Path.home())
@@ -121,6 +127,15 @@ class ModelTrainer(QtCore.QObject):
         model_type = info.get('model_type', 'unknown')
         return f"Model: {model_type}\nClasses: {class_count}\nAccuracy: {accuracy:.1%}"
 
+    # NEW: Custom model property getters
+    @Property(str, notify=customModelPathChanged)
+    def customModelPath(self):
+        return self._custom_model_path
+
+    @Property(bool, notify=useCustomModelChanged)
+    def useCustomModel(self):
+        return self._use_custom_model
+
     # ====================================================
     # Property Setters (Internal)
     # ====================================================
@@ -158,6 +173,22 @@ class ModelTrainer(QtCore.QObject):
         if self._trained_model_path != path:
             self._trained_model_path = path
             self.trainedModelPathChanged.emit(path or "")
+
+    # NEW: Custom model setter
+    def _setCustomModelPath(self, path: str):
+        if self._custom_model_path != path:
+            self._custom_model_path = path
+            self.customModelPathChanged.emit(path)
+            self._setStatusMessage(f"Custom model path set to: {path}")
+
+    def _setUseCustomModel(self, use: bool):
+        if self._use_custom_model != use:
+            self._use_custom_model = use
+            self.useCustomModelChanged.emit(use)
+            if use:
+                self._setStatusMessage("Custom base model enabled")
+            else:
+                self._setStatusMessage("Using default pretrained model")
 
     def _create_class_mapping(self):
         """Create a mapping from folder names to actual class names"""
@@ -259,6 +290,32 @@ class ModelTrainer(QtCore.QObject):
         self._setOutputLocation(location)
         self._setStatusMessage(f"Output location set to: {location}")
 
+    # NEW: Slots for custom model
+    @Slot(str)
+    def setCustomModelPath(self, path: str):
+        """Set the path to a custom base model for fine-tuning"""
+        if path.startswith("file://"):
+            path = path[7:]
+
+        if not os.path.exists(path):
+            self._setStatusMessage(f"Custom model file does not exist: {path}")
+            return
+
+        if not (path.endswith('.pth') or path.endswith('.pt')):
+            self._setStatusMessage(f"Custom model must be a .pth or .pt file")
+            return
+
+        self._setCustomModelPath(path)
+        self._setStatusMessage(f"Custom model loaded: {os.path.basename(path)}")
+
+    @Slot(bool)
+    def setUseCustomModel(self, use: bool):
+        """Enable/disable custom base model usage"""
+        if use and not self._custom_model_path:
+            self._setStatusMessage("Please select a custom model file first")
+            return
+        self._setUseCustomModel(use)
+
     # ====================================================
     # Public Slots - Business Logic
     # ====================================================
@@ -304,7 +361,14 @@ class ModelTrainer(QtCore.QObject):
 
         # Parse model type to get the actual model name
         model_name = self._parse_model_type(modelType)
-        self._setStatusMessage(f"Starting training with {model_name}")
+
+        # Check if using custom model
+        custom_model_path = self._custom_model_path if self._use_custom_model else None
+
+        if custom_model_path:
+            self._setStatusMessage(f"Starting fine-tuning with custom base model: {os.path.basename(custom_model_path)}")
+        else:
+            self._setStatusMessage(f"Starting training with {model_name}")
 
         # Create and configure the training task
         split_ratio = self._train_test_split / 100.0
@@ -315,7 +379,8 @@ class ModelTrainer(QtCore.QObject):
             batch_size=int(self._batch_size),
             learning_rate=self._learning_rate,
             train_test_split=split_ratio,
-            class_mapping=self._class_mapping
+            class_mapping=self._class_mapping,
+            custom_model_path=custom_model_path  # NEW: Pass custom model path
         )
 
         # Connect signals
@@ -478,6 +543,7 @@ class ModelTrainer(QtCore.QObject):
             # Store model info
             if self._trained_model_path and os.path.exists(self._trained_model_path):
                 try:
+                    import torch
                     checkpoint = torch.load(self._trained_model_path, map_location='cpu')
                     self._trained_model_info = {
                         'path': self._trained_model_path,
@@ -551,5 +617,7 @@ class ModelTrainer(QtCore.QObject):
             return "mobilenetv3_large"
         elif "SSDLite-MobileNetV3" in model_type_str:
             return "ssdlite_mobilenetv3"
+        elif "Custom" in model_type_str:
+            return "custom"  # NEW: Custom model type
         else:
             return "mobilenetv3_small"
