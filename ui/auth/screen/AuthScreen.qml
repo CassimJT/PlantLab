@@ -5,8 +5,8 @@ import QtQuick.Layouts
 
 Window {
     id: authWindow
-    width: 600
-    height: 600
+    width: 450
+    height: 750
     visible: true
     title: "Auth"
 

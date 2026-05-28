@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import "./delagete"
 import "./model"
 import "./components"
+import "../componets"
 
 Page {
     id: root
@@ -180,6 +181,45 @@ Page {
                     id: logs
                 }
             }
+        }
+
+    }
+    //
+    MessagePopUp{
+        id:messagePopUp
+    }
+
+    // ====================================================
+    // Connections to ModelTrainer
+    // ====================================================
+    Connections {
+        target: ModelTrainer
+        enabled: typeof ModelTrainer !== "undefined"
+
+        // Handle training completion
+        function onTrainingCompleted(result) {
+            if (result !== "failed") {
+                parseResults(result)
+                messagePopUp.showSuccess(
+                    "Training Success",
+                    "Model training completed successfully!\nAccuracy: " +
+                    (root.accuracyValue ? root.accuracyValue.toFixed(2) + "%" : "N/A")
+                )
+            } else {
+                messagePopUp.showError(
+                    "Training Failed",
+                    "The training process failed.\nPlease check your dataset and try again."
+                )
+            }
+        }
+
+        // Handle errors
+        function onTrainingError(error) {
+            root.statusMessage = "Error: " + error
+            messagePopUp.showError(
+                "Training Error",
+                "An error occurred during training:\n" + error
+            )
         }
 
     }

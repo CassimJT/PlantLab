@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs
 import "./componets"
+import "../componets"
 
 Page {
     id: rootPage
@@ -338,6 +339,40 @@ Page {
             } else {
                 rootPage.selectedImagePath = ""
             }
+        }
+    }
+    //messageBox
+    MessagePopUp {
+        id: messagePopup
+        anchors.centerIn: parent
+    }
+
+    //
+    Connections {
+        target: DatasetProcessor
+
+        function onNormalizationCompleted(message) {
+            console.log("Normalization completed:", message)
+            messagePopup.title = "Success"
+            messagePopup.message = message
+            messagePopup.type = "success"
+            messagePopup.open()
+        }
+
+        function onNormalizationFailed(message) {
+            console.log("Normalization failed:", message)
+            messagePopup.title = "Error"
+            messagePopup.message = message
+            messagePopup.type = "error"
+            messagePopup.open()
+        }
+
+        function onExportCompleted(message) {
+            console.log("Export completed:", message)
+            messagePopup.title = "Export Complete"
+            messagePopup.message = message
+            messagePopup.type = "success"
+            messagePopup.open()
         }
     }
 }

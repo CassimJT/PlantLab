@@ -83,6 +83,7 @@ files = [
 "ui/auth/componets/SignIn.qml",
 "ui/auth/componets/SignUp.qml",
 "ui/auth/screen/AuthScreen.qml",
+"ui/componets/MessagePopUp.qml",
 "ui/curation/labeling_page.qml",
 "ui/dashboard/DashboardPage.qml",
 "ui/dashboard/component/ChartCard.qml",
