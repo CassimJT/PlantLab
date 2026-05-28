@@ -44,6 +44,7 @@ class ModelConverterTask(QRunnable):
         self._canceled = False
         self._current_save_path = ""
         self.setAutoDelete(False)  # Manage worker lifecycle manually
+        self._yolo_model = None  # Store YOLO model reference
 
         # Set default save path if none provided
         if not save_path:
@@ -81,7 +82,7 @@ class ModelConverterTask(QRunnable):
         return model
 
     def _load_pytorch_model(self, model_path):
-        """Load PyTorch model with support for YOLO/Ultralytics, training checkpoints, and regular models"""
+        """Load PyTorch model with special handling for YOLO"""
         self.signals.conversion_step.emit("Loading PyTorch model...")
 
         # Try loading as YOLO model first if ultralytics is available
@@ -89,12 +90,25 @@ class ModelConverterTask(QRunnable):
             try:
                 self.signals.status.emit("Attempting to load as YOLO model...")
                 yolo_model = YOLO(model_path)
-                # Extract the underlying PyTorch model
-                if hasattr(yolo_model, 'model'):
-                    model = yolo_model.model
-                    model.eval()
-                    self.signals.status.emit("Successfully loaded YOLO model")
-                    return model
+
+                # Store the YOLO model for later use
+                self._yolo_model = yolo_model
+
+                # For ONNX/TensorFlow/OpenCV conversion, use the YOLO object directly
+                if self.to_framework.lower() in ['onnx', 'tensorflow', 'opencv']:
+                    self.signals.status.emit("YOLO model loaded successfully for ONNX/TensorFlow export")
+                    return yolo_model
+                else:
+                    # For ExecuTorch/LibTorch, we need to inform user it's not supported directly
+                    self.signals.status.emit("YOLO model detected but ExecuTorch export may not be supported")
+                    self.signals.status.emit("Attempting to extract model...")
+                    if hasattr(yolo_model, 'model'):
+                        model = yolo_model.model
+                        model.eval()
+                        self.signals.status.emit("YOLO model extracted for LibTorch/ExecuTorch")
+                        return model
+                    else:
+                        return yolo_model
             except Exception as e:
                 self.signals.status.emit(f"Not a YOLO model or failed to load: {str(e)}")
 
@@ -175,9 +189,21 @@ class ModelConverterTask(QRunnable):
         # Default for image models
         default_input = torch.randn(1, 3, 224, 224)
 
+        # If it's a YOLO model, try to get input size from model
+        if ULTRALYTICS_AVAILABLE and isinstance(model, YOLO):
+            try:
+                if hasattr(model, 'model') and hasattr(model.model, 'args'):
+                    imgsz = getattr(model.model.args, 'imgsz', 224)
+                    if isinstance(imgsz, (list, tuple)):
+                        imgsz = imgsz[0] if imgsz else 224
+                    default_input = torch.randn(1, 3, imgsz, imgsz)
+                    self.signals.status.emit(f"YOLO model input size detected: {imgsz}")
+            except Exception:
+                pass
+
         # Try to get input shape from model metadata
         try:
-            # Check if model has example_inputs attribute (common in some models)
+            # Check if model has example_inputs attribute
             if hasattr(model, 'example_inputs') and model.example_inputs is not None:
                 if isinstance(model.example_inputs, torch.Tensor):
                     return model.example_inputs
@@ -204,23 +230,72 @@ class ModelConverterTask(QRunnable):
 
         return default_input
 
+    def _convert_yolo_to_format(self, yolo_model, target_format, model_name):
+        """Convert YOLO model directly using Ultralytics export"""
+        self.signals.status.emit(f"Using Ultralytics to export YOLO to {target_format}...")
+
+        try:
+            # Map target framework to Ultralytics format
+            format_map = {
+                'onnx': 'onnx',
+                'tensorflow': 'saved_model',
+                'executorch': 'executorch',
+                'libtorch': 'torchscript',
+                'opencv': 'onnx'
+            }
+
+            ultralytics_format = format_map.get(target_format.lower(), target_format.lower())
+
+            # For ExecuTorch, check if it's supported
+            if target_format.lower() == 'executorch':
+                self.signals.status.emit("Note: ExecuTorch export for YOLO may have limitations")
+                self.signals.status.emit("Consider using ONNX format if ExecuTorch continues to fail")
+
+            # Export using Ultralytics
+            export_path = yolo_model.export(
+                format=ultralytics_format,
+                imgsz=224,
+                batch=1,
+                opset=12 if target_format.lower() == 'onnx' else None,
+                simplify=True if target_format.lower() == 'onnx' else False
+            )
+
+            # Handle return value (can be string or Path object)
+            if export_path:
+                export_path_str = str(export_path)
+                self.signals.status.emit(f"YOLO export successful: {export_path_str}")
+                return export_path_str
+            else:
+                self.signals.error.emit("YOLO export returned no path")
+                return None
+
+        except Exception as e:
+            self.signals.status.emit(f"YOLO direct export failed: {str(e)}")
+            return None
+
     def _convert_to_onnx(self, model, example_input, model_name):
+        """Convert PyTorch model to ONNX"""
         self.signals.conversion_step.emit("Exporting to ONNX...")
         onnx_path = os.path.join(self.save_path, f"{model_name}.onnx")
+
+        # Handle YOLO model specially
+        if ULTRALYTICS_AVAILABLE and isinstance(model, YOLO):
+            return self._convert_yolo_to_format(model, 'onnx', model_name)
+
         try:
             torch.onnx.export(
                 model,
                 example_input,
                 onnx_path,
                 export_params=True,
-                opset_version=12,                  # ← changed to 12
+                opset_version=12,
                 do_constant_folding=True,
                 input_names=['input'],
                 output_names=['output'],
-                dynamic_axes=None                  # ← disable dynamic (or set fixed shapes)
+                dynamic_axes=None
             )
 
-            # Optional but strongly recommended: simplify the ONNX graph
+            # Simplify the ONNX graph
             try:
                 import onnx
                 from onnxsim import simplify
@@ -228,11 +303,11 @@ class ModelConverterTask(QRunnable):
                 model_simp, check = simplify(model_onnx)
                 if check:
                     onnx.save(model_simp, onnx_path)
-                    print("ONNX model simplified successfully")
+                    self.signals.status.emit("ONNX model simplified successfully")
             except ImportError:
-                print("onnxsim not installed – skipping simplification")
+                self.signals.status.emit("onnxsim not installed – skipping simplification")
             except Exception as simp_err:
-                print(f"Simplification failed: {simp_err}")
+                self.signals.status.emit(f"Simplification failed: {simp_err}")
 
             return onnx_path
         except Exception as e:
@@ -243,9 +318,13 @@ class ModelConverterTask(QRunnable):
         """Convert PyTorch model to TorchScript (LibTorch compatible)"""
         self.signals.conversion_step.emit("Tracing model for TorchScript...")
 
+        # Handle YOLO model specially
+        if ULTRALYTICS_AVAILABLE and isinstance(model, YOLO):
+            return self._convert_yolo_to_format(model, 'libtorch', model_name)
+
         try:
             # Use tracing for LibTorch compatibility
-            traced_model = torch.jit.trace(model, example_input)
+            traced_model = torch.jit.trace(model, example_input, strict=False)
             ts_path = os.path.join(self.save_path, f"{model_name}_traced.pt")
             traced_model.save(ts_path)
             return ts_path
@@ -256,125 +335,212 @@ class ModelConverterTask(QRunnable):
     def _convert_to_executorch(self, model, example_input, model_name):
         """Convert PyTorch model to ExecuTorch format with multiple fallback strategies"""
         self.signals.conversion_step.emit("Exporting to ExecuTorch...")
+
+        # Special message for YOLO models
+        if ULTRALYTICS_AVAILABLE and (isinstance(model, YOLO) or self._yolo_model is not None):
+            self.signals.status.emit("YOLO models have limited ExecuTorch support")
+            self.signals.status.emit("The model contains operations (.item()) that are incompatible with ExecuTorch")
+            self.signals.status.emit("Recommendation: Use ONNX format for better compatibility")
+
+            # Ask user if they want to continue (in a real app, you'd show a dialog)
+            self.signals.status.emit("Attempting export anyway (may fail)...")
+
+            # Try alternative: Convert to ONNX first, then provide instructions
+            self.signals.status.emit("Alternative: Convert to ONNX format first, then use ONNX runtime")
+            onnx_alternative = os.path.join(self.save_path, f"{model_name}.onnx")
+            if os.path.exists(onnx_alternative):
+                self.signals.status.emit(f"ONNX model already exists at: {onnx_alternative}")
+                self.signals.status.emit("You can use this with ONNX Runtime instead of ExecuTorch")
+
         model.eval()
         model = model.to('cpu')
 
+        # Try different export strategies
+        strategies = [
+            self._try_executorch_export_strict,
+            self._try_executorch_export_non_strict,
+            self._try_executorch_via_torchscript,
+            self._try_executorch_via_onnx
+        ]
+
+        for i, strategy in enumerate(strategies):
+            if self._canceled:
+                return None
+
+            self.signals.status.emit(f"Trying export strategy {i+1}/{len(strategies)}...")
+            try:
+                result = strategy(model, example_input, model_name)
+                if result:
+                    self.signals.status.emit(f"Export successful with strategy {i+1}")
+                    return result
+            except Exception as e:
+                self.signals.status.emit(f"Strategy {i+1} failed: {str(e)[:100]}")
+                continue
+
+        self.signals.error.emit("All ExecuTorch export strategies failed. YOLO models are not fully compatible with ExecuTorch due to dynamic operations.")
+        self.signals.error.emit("Recommendation: Export to ONNX format instead for broader compatibility.")
+        return None
+
+    def _try_executorch_export_strict(self, model, example_input, model_name):
+        """Try ExecuTorch export with strict=True"""
+        self.signals.status.emit("Strategy 1: torch.export with strict=True...")
+
         try:
-            # First try: Use Ultralytics built-in export (for YOLO models)
-            if ULTRALYTICS_AVAILABLE:
-                try:
-                    self.signals.status.emit("Trying Ultralytics ExecuTorch export...")
-                    from ultralytics import YOLO
-
-                    # Save model temporarily
-                    temp_path = os.path.join(self.save_path, f"{model_name}_temp.pt")
-                    if hasattr(model, 'state_dict'):
-                        torch.save(model.state_dict(), temp_path)
-                    else:
-                        torch.save(model, temp_path)
-
-                    # Load and export
-                    yolo_model = YOLO(temp_path)
-                    export_dir = yolo_model.export(format="executorch", imgsz=[224, 224])
-
-                    # Clean up
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
-
-                    # Find .pte file
-                    pte_files = list(Path(export_dir).glob("*.pte"))
-                    if pte_files:
-                        self.signals.status.emit("Ultralytics ExecuTorch export successful")
-                        return str(pte_files[0])
-                except Exception as e:
-                    self.signals.status.emit(f"Ultralytics export failed, trying fallback: {str(e)}")
-
-            # Second try: Manual ExecuTorch export
-            self.signals.status.emit("Attempting manual ExecuTorch export...")
-
-            # Ensure schema files exist
-            self._ensure_executorch_schema_files()
-
             import executorch.exir as exir
             from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
             from executorch.exir import EdgeCompileConfig, ExecutorchBackendConfig
             from torch.export import export
 
-            # Ensure example_input is a tuple
             if not isinstance(example_input, tuple):
                 example_input = (example_input,)
 
-            # Export using torch.export
-            self.signals.conversion_step.emit("Running torch.export...")
-            try:
-                exported_program = export(model, example_input)
-            except Exception as e:
-                self.signals.status.emit(f"torch.export failed, trying with dynamo=False")
-                # Fallback for older models
-                exported_program = torch.export.export(model, example_input, strict=False)
+            exported_program = export(model, example_input, strict=True)
 
-            # Convert to Edge dialect
-            self.signals.conversion_step.emit("Converting to Edge dialect...")
             edge_program = exir.to_edge(
                 exported_program,
-                compile_config=EdgeCompileConfig(
-                    _check_ir_validity=False,
-                )
+                compile_config=EdgeCompileConfig(_check_ir_validity=False)
             )
 
-            # Apply XNNPACK backend
             edge_program = edge_program.to_backend(XnnpackPartitioner())
 
-            # Generate ExecuTorch program
-            self.signals.conversion_step.emit("Generating ExecuTorch program...")
-            executorch_program = edge_program.to_executorch(
-                ExecutorchBackendConfig()
-            )
+            executorch_program = edge_program.to_executorch(ExecutorchBackendConfig())
 
-            # Save the .pte file
             pte_path = os.path.join(self.save_path, f"{model_name}.pte")
             with open(pte_path, "wb") as f:
                 f.write(executorch_program.buffer)
 
             return pte_path
-
-        except ImportError as e:
-            self.signals.error.emit(f"Executorch package not properly installed: {str(e)}")
-            return None
         except Exception as e:
-            self.signals.error.emit(f"ExecuTorch export failed: {str(e)}")
-            return None
+            raise Exception(f"Strict export failed: {str(e)}")
 
-    def _ensure_executorch_schema_files(self):
-        """Ensure required schema files exist for ExecuTorch export"""
+    def _try_executorch_export_non_strict(self, model, example_input, model_name):
+        """Try ExecuTorch export with strict=False"""
+        self.signals.status.emit("Strategy 2: torch.export with strict=False...")
+
         try:
-            exec_path = Path(executorch.__file__).parent
-            schema_dir = exec_path / "exir" / "_serialize"
-            schema_dir.mkdir(exist_ok=True, parents=True)
+            import executorch.exir as exir
+            from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
+            from executorch.exir import EdgeCompileConfig, ExecutorchBackendConfig
+            from torch.export import export
 
-            program_fbs = schema_dir / "program.fbs"
-            scalar_type_fbs = schema_dir / "scalar_type.fbs"
+            if not isinstance(example_input, tuple):
+                example_input = (example_input,)
 
-            if not program_fbs.exists() or not scalar_type_fbs.exists():
-                source_dir = exec_path / "schema"
-                if source_dir.exists():
-                    if (source_dir / "program.fbs").exists() and not program_fbs.exists():
-                        shutil.copy(source_dir / "program.fbs", program_fbs)
-                    if (source_dir / "scalar_type_fbs").exists() and not scalar_type_fbs.exists():
-                        shutil.copy(source_dir / "scalar_type_fbs", scalar_type_fbs)
-        except Exception:
-            pass
+            exported_program = export(model, example_input, strict=False)
+
+            edge_program = exir.to_edge(
+                exported_program,
+                compile_config=EdgeCompileConfig(_check_ir_validity=False)
+            )
+
+            edge_program = edge_program.to_backend(XnnpackPartitioner())
+
+            executorch_program = edge_program.to_executorch(ExecutorchBackendConfig())
+
+            pte_path = os.path.join(self.save_path, f"{model_name}_nonstrict.pte")
+            with open(pte_path, "wb") as f:
+                f.write(executorch_program.buffer)
+
+            return pte_path
+        except Exception as e:
+            raise Exception(f"Non-strict export failed: {str(e)}")
+
+    def _try_executorch_via_torchscript(self, model, example_input, model_name):
+        """Convert to TorchScript first, then to ExecuTorch"""
+        self.signals.status.emit("Strategy 3: Convert to TorchScript first...")
+
+        try:
+            # First convert to TorchScript
+            if not isinstance(example_input, tuple):
+                example_input = (example_input,)
+
+            traced_model = torch.jit.trace(model, example_input, strict=False)
+
+            # Then convert TorchScript to ExecuTorch
+            import executorch.exir as exir
+            from executorch.exir import EdgeCompileConfig, ExecutorchBackendConfig
+
+            exported_program = torch.export.export(traced_model, example_input, strict=False)
+
+            edge_program = exir.to_edge(
+                exported_program,
+                compile_config=EdgeCompileConfig(_check_ir_validity=False)
+            )
+
+            executorch_program = edge_program.to_executorch(ExecutorchBackendConfig())
+
+            pte_path = os.path.join(self.save_path, f"{model_name}_from_ts.pte")
+            with open(pte_path, "wb") as f:
+                f.write(executorch_program.buffer)
+
+            return pte_path
+        except Exception as e:
+            raise Exception(f"TorchScript intermediate conversion failed: {str(e)}")
+
+    def _try_executorch_via_onnx(self, model, example_input, model_name):
+        """Convert to ONNX first, then provide instructions (no actual conversion)"""
+        self.signals.status.emit("Strategy 4: Provide ONNX alternative...")
+
+        # This strategy doesn't actually convert to ExecuTorch
+        # It just creates an ONNX file as a recommended alternative
+        onnx_path = os.path.join(self.save_path, f"{model_name}.onnx")
+
+        if not os.path.exists(onnx_path):
+            self.signals.status.emit("Creating ONNX version as recommended alternative...")
+            if ULTRALYTICS_AVAILABLE and isinstance(model, YOLO):
+                onnx_path = self._convert_yolo_to_format(model, 'onnx', model_name)
+            else:
+                self._convert_to_onnx(model, example_input, model_name)
+
+        if os.path.exists(onnx_path):
+            self.signals.status.emit(f"ONNX model created at: {onnx_path}")
+            self.signals.status.emit("ExecuTorch export failed, but ONNX export succeeded")
+            self.signals.status.emit("Use ONNX format with ONNX Runtime for deployment")
+
+            # Create an info file explaining the situation
+            info_path = os.path.join(self.save_path, f"{model_name}_executorch_fallback_info.txt")
+            with open(info_path, 'w') as f:
+                f.write("ExecuTorch Export Failed - Alternative Solution\n")
+                f.write("============================================\n\n")
+                f.write("The YOLO model could not be exported to ExecuTorch because it contains\n")
+                f.write("operations (like .item() calls) that are not compatible with ExecuTorch's\n")
+                f.write("static graph requirements.\n\n")
+                f.write("Recommended Alternative:\n")
+                f.write("------------------------\n")
+                f.write(f"Use the ONNX model instead: {onnx_path}\n\n")
+                f.write("ONNX models can be used with:\n")
+                f.write("  - ONNX Runtime (Python, C++, C#, Java)\n")
+                f.write("  - OpenCV DNN module\n")
+                f.write("  - TensorFlow (via tf2onnx)\n")
+                f.write("  - Many other frameworks and devices\n\n")
+                f.write("For mobile deployment, consider:\n")
+                f.write("  - Convert ONNX to Core ML for iOS\n")
+                f.write("  - Convert ONNX to TFLite for Android\n")
+                f.write("  - Use ONNX Runtime Mobile\n")
+
+            # Return None to indicate failure, but we've provided an alternative
+            raise Exception("ExecuTorch export not possible - ONNX alternative provided")
+        else:
+            raise Exception("Failed to create ONNX alternative")
 
     def _convert_to_tensorflow(self, model, example_input, model_name):
-        """Convert PyTorch model to ONNX (TensorFlow compatible via ONNX Runtime)"""
-        self.signals.conversion_step.emit("Converting to ONNX (TensorFlow compatible)...")
+        """Convert PyTorch model to TensorFlow via ONNX"""
+        self.signals.conversion_step.emit("Converting to TensorFlow via ONNX...")
+
+        # Handle YOLO model specially
+        if ULTRALYTICS_AVAILABLE and isinstance(model, YOLO):
+            # First convert to ONNX using YOLO's exporter
+            onnx_path = self._convert_yolo_to_format(model, 'onnx', model_name)
+            if onnx_path and os.path.exists(onnx_path):
+                # Then convert ONNX to TensorFlow
+                return self._convert_onnx_to_tensorflow(onnx_path, model_name)
+            return None
 
         try:
-            # Convert to ONNX
-            onnx_path = os.path.join(self.save_path, f"{model_name}.onnx")
+            # Convert to ONNX first
+            onnx_path = os.path.join(self.save_path, f"{model_name}_temp.onnx")
 
             self.signals.status.emit("Exporting PyTorch to ONNX...")
-
             torch.onnx.export(
                 model,
                 example_input,
@@ -386,21 +552,61 @@ class ModelConverterTask(QRunnable):
                              'output': {0: 'batch_size'}}
             )
 
-            self.signals.status.emit(f"ONNX model saved to: {onnx_path}")
-            self.signals.status.emit("TensorFlow can load this using onnxruntime or tf2onnx")
-
-            # Also create a small info file
-            info_path = os.path.join(self.save_path, f"{model_name}_tf_info.txt")
-            with open(info_path, 'w') as f:
-                f.write("To use this model in TensorFlow:\n")
-                f.write("1. Install onnxruntime: pip install onnxruntime\n")
-                f.write("2. Use onnxruntime to load and run the model\n")
-                f.write("3. Or convert to TensorFlow: python -m tf2onnx.convert --input model.onnx --output model.pb\n")
-
-            return onnx_path
+            # Convert ONNX to TensorFlow
+            return self._convert_onnx_to_tensorflow(onnx_path, model_name)
 
         except Exception as e:
-            self.signals.error.emit(f"Export failed: {str(e)}")
+            self.signals.error.emit(f"TensorFlow export failed: {str(e)}")
+            return None
+
+    def _convert_onnx_to_tensorflow(self, onnx_path, model_name):
+        """Convert ONNX model to TensorFlow format"""
+        try:
+            self.signals.status.emit("Converting ONNX to TensorFlow...")
+
+            # Use tf2onnx to convert ONNX to TensorFlow
+            import tf2onnx
+            from tf2onnx import convert
+
+            # Load ONNX model
+            onnx_model = onnx.load(onnx_path)
+
+            # Convert to TensorFlow
+            tf_path = os.path.join(self.save_path, f"{model_name}_tf_model")
+            os.makedirs(tf_path, exist_ok=True)
+
+            # Run the conversion
+            tf_model = convert.from_onnx(onnx_model)
+
+            # Save as SavedModel format
+            tf.saved_model.save(tf_model, tf_path)
+
+            # Also save as frozen graph .pb
+            pb_path = os.path.join(self.save_path, f"{model_name}.pb")
+            with tf.io.gfile.GFile(pb_path, 'wb') as f:
+                f.write(tf_model.graph.as_graph_def().SerializeToString())
+
+            # Create info file
+            info_path = os.path.join(self.save_path, f"{model_name}_tf_info.txt")
+            with open(info_path, 'w') as f:
+                f.write(f"TensorFlow model saved in two formats:\n")
+                f.write(f"1. SavedModel format: {tf_path}\n")
+                f.write(f"2. Frozen graph: {pb_path}\n")
+                f.write("\nTo load in TensorFlow:\n")
+                f.write(f"  model = tf.saved_model.load('{tf_path}')\n")
+                f.write(f"  or\n")
+                f.write(f"  with tf.io.gfile.GFile('{pb_path}', 'rb') as f:\n")
+                f.write(f"      graph_def = tf.compat.v1.GraphDef()\n")
+                f.write(f"      graph_def.ParseFromString(f.read())\n")
+
+            # Clean up temporary ONNX file
+            if os.path.exists(onnx_path) and "temp" in onnx_path:
+                os.remove(onnx_path)
+
+            return pb_path
+
+        except Exception as e:
+            self.signals.error.emit(f"ONNX to TensorFlow conversion failed: {str(e)}")
             return None
 
     @Slot()
@@ -432,7 +638,16 @@ class ModelConverterTask(QRunnable):
             if self._canceled:
                 return
 
-            # Generate example input
+            # For YOLO models going to certain formats, we can use direct export
+            if ULTRALYTICS_AVAILABLE and isinstance(model, YOLO) and self.to_framework.lower() in ['onnx', 'tensorflow', 'opencv']:
+                self.signals.progress.emit(50)
+                output_path = self._convert_yolo_to_format(model, self.to_framework, Path(self.model_path).stem)
+                if output_path:
+                    self.signals.progress.emit(100)
+                    self.signals.finished.emit(output_path)
+                    return
+
+            # Generate example input for non-YOLO models or when needed
             example_input = self._get_example_input(model)
             self.signals.status.emit(f"Using example input shape: {tuple(example_input.shape)}")
 
@@ -488,6 +703,8 @@ class ModelConverterTask(QRunnable):
             self.signals.error.emit(error_msg)
             self.signals.progress.emit(0)
         finally:
+            # Clean up
+            self._yolo_model = None
             # Disconnect signals to prevent memory leaks
             try:
                 self.signals.progress.disconnect()
